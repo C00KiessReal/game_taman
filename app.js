@@ -9,7 +9,6 @@ const firebaseConfig = {
     appId: "1:1036449209834:web:284c003a3ef15e7e8b6693"
 };
 
-// Inisialisasi Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -17,7 +16,7 @@ const playerId = 'player_' + Math.floor(Math.random() * 10000);
 const playersRef = db.ref('players');
 const chatRef = db.ref('chats');
 
-// 2. SETUP THREE.JS (Dunia & Taman)
+// 2. SETUP THREE.JS
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
 scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
@@ -46,7 +45,6 @@ grass.rotation.x = -Math.PI / 2;
 grass.receiveShadow = true;
 scene.add(grass);
 
-// GENERATOR POHON TAMAN
 function createTree(x, z) {
     const treeGroup = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8);
@@ -73,7 +71,7 @@ for(let i = 0; i < 40; i++) {
     createTree(randomX, randomZ);
 }
 
-// 3. MODEL KARAKTER KUCING (Berdiri 2 Kaki)
+// 3. MODEL KARAKTER KUCING
 function createPlayerModel(catColorHex) {
     const playerGroup = new THREE.Group();
 
@@ -83,7 +81,6 @@ function createPlayerModel(catColorHex) {
     const pinkMat = new THREE.MeshLambertMaterial({ color: 0xffaaaa }); 
     const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); 
 
-    // Badan Tegak (Oval)
     const bodyGeo = new THREE.SphereGeometry(0.35, 32, 16);
     const body = new THREE.Mesh(bodyGeo, catMat);
     body.scale.set(1, 1.4, 1); 
@@ -91,14 +88,12 @@ function createPlayerModel(catColorHex) {
     body.castShadow = true;
     playerGroup.add(body);
 
-    // Kepala
     const headGeo = new THREE.SphereGeometry(0.38, 32, 32);
     const head = new THREE.Mesh(headGeo, catMat);
     head.position.set(0, 1.6, 0); 
     head.castShadow = true;
     playerGroup.add(head);
 
-    // Telinga
     const earGeo = new THREE.ConeGeometry(0.12, 0.25, 16);
     const leftEar = new THREE.Mesh(earGeo, catMat);
     leftEar.position.set(-0.2, 1.85, 0);
@@ -112,7 +107,6 @@ function createPlayerModel(catColorHex) {
     rightEar.castShadow = true;
     playerGroup.add(rightEar);
 
-    // Mata
     const eyeWhiteGeo = new THREE.SphereGeometry(0.09, 16, 16);
     const eyePupilGeo = new THREE.SphereGeometry(0.04, 16, 16);
     
@@ -130,13 +124,11 @@ function createPlayerModel(catColorHex) {
     rightEyeP.position.set(0.15, 1.65, -0.40);
     playerGroup.add(rightEyeP);
 
-    // Hidung
     const noseGeo = new THREE.SphereGeometry(0.05, 16, 16);
     const nose = new THREE.Mesh(noseGeo, pinkMat);
     nose.position.set(0, 1.55, -0.36);
     playerGroup.add(nose);
 
-    // Kaki
     const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.45, 16);
     const leftLeg = new THREE.Mesh(legGeo, catMat);
     leftLeg.position.set(-0.15, 0.22, 0);
@@ -148,7 +140,6 @@ function createPlayerModel(catColorHex) {
     rightLeg.castShadow = true;
     playerGroup.add(rightLeg);
 
-    // Tangan
     const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 16);
     const leftArm = new THREE.Mesh(armGeo, catMat);
     leftArm.position.set(-0.45, 1.0, 0);
@@ -162,7 +153,6 @@ function createPlayerModel(catColorHex) {
     rightArm.castShadow = true;
     playerGroup.add(rightArm);
 
-    // Ekor
     const tailGeo = new THREE.CylinderGeometry(0.06, 0.03, 0.7, 16);
     const tail = new THREE.Mesh(tailGeo, catMat);
     tail.position.set(0, 0.6, 0.35);
@@ -235,7 +225,7 @@ playersRef.on('value', (snapshot) => {
     }
 });
 
-// 5. KONTROL & ANIMASI
+// 5. KONTROL (KEYBOARD & JOYSTICK)
 const keys = {};
 window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
@@ -243,22 +233,62 @@ window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 const speed = 0.15; 
 let wasMoving = false;
 
+// Joystick Variables
+let joystickDx = 0;
+let joystickDz = 0;
+let isJoystickActive = false;
+
+// Inisialisasi Nipple.js
+const joystickZone = document.getElementById('joystick-zone');
+const manager = nipplejs.create({
+    zone: joystickZone,
+    mode: 'static',
+    position: { left: '50%', top: '50%' },
+    color: 'white',
+    size: 100
+});
+
+manager.on('move', function (evt, data) {
+    isJoystickActive = true;
+    const angle = data.angle.radian;
+    const force = Math.min(data.force, 1);
+    
+    joystickDx = Math.cos(angle) * force;
+    joystickDz = -Math.sin(angle) * force;
+});
+
+manager.on('end', function () {
+    isJoystickActive = false;
+    joystickDx = 0;
+    joystickDz = 0;
+});
+
 function handleMovement() {
     let dx = 0;
     let dz = 0;
     
+    // Input Keyboard
     if (keys['w'] || keys['arrowup']) dz -= 1;
     if (keys['s'] || keys['arrowdown']) dz += 1;
     if (keys['a'] || keys['arrowleft']) dx -= 1;
     if (keys['d'] || keys['arrowright']) dx += 1;
     
+    // Override dengan Joystick jika disentuh (HP)
+    if (isJoystickActive) {
+        dx = joystickDx;
+        dz = joystickDz;
+    }
+    
     if (dx !== 0 || dz !== 0) {
-        const length = Math.sqrt(dx * dx + dz * dz);
-        dx = (dx / length) * speed;
-        dz = (dz / length) * speed;
+        // Normalisasi untuk keyboard
+        if (!isJoystickActive) {
+            const length = Math.sqrt(dx * dx + dz * dz);
+            dx = (dx / length);
+            dz = (dz / length);
+        }
 
-        player.position.x += dx;
-        player.position.z += dz;
+        player.position.x += dx * speed;
+        player.position.z += dz * speed;
         
         const angle = Math.atan2(dx, dz);
         player.rotation.y = angle;
