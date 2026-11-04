@@ -1,32 +1,80 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Taman Bermain Roleplay</title>
-    <link rel="stylesheet" href="style.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
-</head>
-<body>
-    <div id="game-container"></div>
-    
-    <!-- Wadah untuk Nama Melayang -->
-    <div id="nametags-container"></div>
-    
-    <!-- UI Chat -->
-    <div id="ui-container">
-        <div id="chat-box"></div>
-        <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
-    </div>
+body, html {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background-color: #87CEEB;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    touch-action: none;
+}
 
-    <!-- UI HP -->
-    <div id="joystick-zone"></div>
-    <div id="jump-btn">Lompat🦘</div>
+#game-container, #nametags-container {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; /* Agar tidak mengganggu klik layar */
+    z-index: 1;
+}
 
-    <script src="app.js"></script>
-</body>
-</html>
+.nametag {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    transform: translate(-50%, -50%); /* Posisi tepat di tengah elemen */
+    white-space: nowrap;
+    text-shadow: 1px 1px 2px black;
+}
+
+#ui-container {
+    position: absolute;
+    top: 20px; left: 20px;
+    z-index: 10;
+    width: 300px;
+    max-width: 70%;
+    pointer-events: auto;
+}
+
+#chat-box {
+    background: rgba(255, 255, 255, 0.8);
+    height: 150px;
+    border-radius: 10px;
+    padding: 10px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+#chat-input {
+    width: 100%; padding: 10px;
+    border-radius: 20px; border: none;
+    outline: none; box-sizing: border-box;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+#joystick-zone {
+    position: absolute;
+    bottom: 40px; left: 40px; /* Pindah ke kiri untuk HP */
+    width: 120px; height: 120px;
+    z-index: 10; pointer-events: auto;
+}
+
+#jump-btn {
+    position: absolute;
+    bottom: 60px; right: 40px;
+    background: #ffaa00;
+    color: white; font-weight: bold;
+    padding: 20px; border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 10; cursor: pointer;
+    pointer-events: auto; user-select: none;
+}
+
+#jump-btn:active { background: #ff8800; transform: scale(0.95); }
+
+/* Sembunyikan kontrol HP jika di PC */
+@media (min-width: 768px) {
+    #joystick-zone, #jump-btn { display: none; }
+}
