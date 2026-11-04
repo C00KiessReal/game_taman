@@ -2,7 +2,6 @@
 const firebaseConfig = {
     apiKey: "AIzaSyAgrAl1_FGvOvo8xAJOqdrqVH9F1HCDiWw",
     authDomain: "project-game-636ff.firebaseapp.com",
-    // Gunakan URL Singapore (asia-southeast1) jika kamu memilih server Singapore tadi
     databaseURL: "https://project-game-636ff-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "project-game-636ff",
     storageBucket: "project-game-636ff.firebasestorage.app",
@@ -47,11 +46,11 @@ grass.rotation.x = -Math.PI / 2;
 grass.receiveShadow = true;
 scene.add(grass);
 
-// 3. KARAKTER PEMAIN (Bentuk Kapsul Imut Sementara)
-const playerGeometry = new THREE.CapsuleGeometry(1, 1.5, 1);
+// 3. KARAKTER PEMAIN (Bentuk Kotak ala Roblox)
+const playerGeometry = new THREE.BoxGeometry(1, 1.5, 1);
 const playerMaterial = new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff }); // Warna random per pemain
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
-player.position.y = 1;
+player.position.y = 0.75; // Biar kakinya pas di atas rumput
 player.castShadow = true;
 scene.add(player);
 
@@ -62,7 +61,6 @@ camera.lookAt(player.position);
 const otherPlayers = {};
 
 // 4. LOGIKA MULTIPLAYER
-// Sync pergerakan pemain ini ke database
 function updatePlayerPosition() {
     playersRef.child(playerId).set({
         x: player.position.x,
@@ -72,28 +70,24 @@ function updatePlayerPosition() {
     });
 }
 
-// Hapus pemain saat keluar browser
 window.addEventListener("beforeunload", () => {
     playersRef.child(playerId).remove();
 });
 
-// Render pemain lain
 playersRef.on('value', (snapshot) => {
     const data = snapshot.val();
     for (let id in data) {
-        if (id === playerId) continue; // Abaikan diri sendiri
+        if (id === playerId) continue; 
         
         if (!otherPlayers[id]) {
-            // Buat karakter untuk pemain baru yang join
             const mat = new THREE.MeshLambertMaterial({ color: data[id].color });
             const mesh = new THREE.Mesh(playerGeometry, mat);
             scene.add(mesh);
             otherPlayers[id] = mesh;
         }
-        // Update posisi pemain lain
         otherPlayers[id].position.set(data[id].x, data[id].y, data[id].z);
     }
-    // Hapus pemain yang disconnect
+    
     for (let id in otherPlayers) {
         if (!data || !data[id]) {
             scene.remove(otherPlayers[id]);
@@ -116,7 +110,6 @@ function handleMovement() {
     if (keys['d']) { player.position.x += speed; moved = true; }
     
     if (moved) {
-        // Kamera mengikuti pemain
         camera.position.x = player.position.x;
         camera.position.z = player.position.z + 10;
         updatePlayerPosition();
@@ -142,3 +135,21 @@ chatRef.on('child_added', (snapshot) => {
     const msgEl = document.createElement('div');
     msgEl.innerHTML = `<strong>${chat.id.substring(0, 8)}:</strong> ${chat.message}`;
     chatBox.appendChild(msgEl);
+    chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+// 7. RENDER LOOP
+function animate() {
+    requestAnimationFrame(animate);
+    handleMovement();
+    renderer.render(scene, camera);
+}
+animate();
+updatePlayerPosition();
+
+// 8. RESPONSIF LAYAR
+window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+});
