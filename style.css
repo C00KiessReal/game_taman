@@ -1,65 +1,32 @@
-body, html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background-color: #87CEEB;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    touch-action: none; /* Mencegah layar ter-scroll saat mengusap joystick */
-}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Taman Bermain Roleplay</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <!-- Wadah untuk Nama Melayang -->
+    <div id="nametags-container"></div>
+    
+    <!-- UI Chat -->
+    <div id="ui-container">
+        <div id="chat-box"></div>
+        <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
+    </div>
 
-#game-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
+    <!-- UI HP -->
+    <div id="joystick-zone"></div>
+    <div id="jump-btn">Lompat🦘</div>
 
-#ui-container {
-    position: absolute;
-    top: 20px; /* Posisi chat di atas agar tidak tertutup keyboard HP */
-    left: 20px;
-    z-index: 10;
-    width: 300px;
-    max-width: 70%;
-}
-
-#chat-box {
-    background: rgba(255, 255, 255, 0.8);
-    height: 150px;
-    border-radius: 10px;
-    padding: 10px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-    font-size: 14px;
-    pointer-events: auto;
-}
-
-#chat-input {
-    width: 100%;
-    padding: 10px;
-    border-radius: 20px;
-    border: none;
-    outline: none;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    box-sizing: border-box;
-}
-
-#joystick-zone {
-    position: absolute;
-    bottom: 40px;
-    right: 40px;
-    width: 120px;
-    height: 120px;
-    z-index: 10;
-}
-
-/* Sembunyikan joystick jika dimainkan di layar besar (PC/Laptop) */
-@media (min-width: 768px) {
-    #joystick-zone {
-        display: none;
-    }
-}
+    <script src="app.js"></script>
+</body>
+</html>
