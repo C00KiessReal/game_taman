@@ -28,7 +28,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.getElementById('game-container').appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(20, 30, 20);
@@ -73,31 +73,28 @@ for(let i = 0; i < 40; i++) {
     createTree(randomX, randomZ);
 }
 
-// 3. KARAKTER PEMAIN (Kucing Berdiri 2 Kaki)
+// 3. KARAKTER PEMAIN (Kucing Berdiri + Persiapan Animasi)
 function createPlayerModel(catColorHex) {
     const playerGroup = new THREE.Group();
 
     const catMat = new THREE.MeshLambertMaterial({ color: catColorHex });
-    const darkMat = new THREE.MeshLambertMaterial({ color: 0x222222 }); // Hitam
-    const pinkMat = new THREE.MeshLambertMaterial({ color: 0xffaaaa }); // Pink
-    const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); // Putih mata
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x222222 }); 
+    const pinkMat = new THREE.MeshLambertMaterial({ color: 0xffaaaa }); 
+    const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); 
 
-    // 1. Badan (Berdiri Tegak / Oval)
     const bodyGeo = new THREE.SphereGeometry(0.35, 32, 16);
     const body = new THREE.Mesh(bodyGeo, catMat);
-    body.scale.set(1, 1.4, 1); // Ditarik ke atas agar lonjong seperti badan manusia
+    body.scale.set(1, 1.4, 1); 
     body.position.y = 0.9; 
     body.castShadow = true;
     playerGroup.add(body);
 
-    // 2. Kepala Kucing
     const headGeo = new THREE.SphereGeometry(0.38, 32, 32);
     const head = new THREE.Mesh(headGeo, catMat);
     head.position.set(0, 1.6, 0); 
     head.castShadow = true;
     playerGroup.add(head);
 
-    // 3. Telinga Kiri & Kanan
     const earGeo = new THREE.ConeGeometry(0.12, 0.25, 16);
     const leftEar = new THREE.Mesh(earGeo, catMat);
     leftEar.position.set(-0.2, 1.85, 0);
@@ -111,11 +108,9 @@ function createPlayerModel(catColorHex) {
     rightEar.castShadow = true;
     playerGroup.add(rightEar);
 
-    // 4. Mata (Binar putih & Pupil hitam)
     const eyeWhiteGeo = new THREE.SphereGeometry(0.09, 16, 16);
     const eyePupilGeo = new THREE.SphereGeometry(0.04, 16, 16);
     
-    // Mata Kiri
     const leftEyeW = new THREE.Mesh(eyeWhiteGeo, whiteMat);
     leftEyeW.position.set(-0.15, 1.65, -0.32);
     playerGroup.add(leftEyeW);
@@ -123,7 +118,6 @@ function createPlayerModel(catColorHex) {
     leftEyeP.position.set(-0.15, 1.65, -0.40);
     playerGroup.add(leftEyeP);
 
-    // Mata Kanan
     const rightEyeW = new THREE.Mesh(eyeWhiteGeo, whiteMat);
     rightEyeW.position.set(0.15, 1.65, -0.32);
     playerGroup.add(rightEyeW);
@@ -131,15 +125,13 @@ function createPlayerModel(catColorHex) {
     rightEyeP.position.set(0.15, 1.65, -0.40);
     playerGroup.add(rightEyeP);
 
-    // 5. Hidung Pink
     const noseGeo = new THREE.SphereGeometry(0.05, 16, 16);
     const nose = new THREE.Mesh(noseGeo, pinkMat);
     nose.position.set(0, 1.55, -0.36);
     playerGroup.add(nose);
 
-    // 6. Kaki Kiri & Kanan (Manusiawi)
+    // Kaki & Tangan (Disimpan di variabel agar bisa digerakkan)
     const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.45, 16);
-    
     const leftLeg = new THREE.Mesh(legGeo, catMat);
     leftLeg.position.set(-0.15, 0.22, 0);
     leftLeg.castShadow = true;
@@ -150,12 +142,10 @@ function createPlayerModel(catColorHex) {
     rightLeg.castShadow = true;
     playerGroup.add(rightLeg);
 
-    // 7. Tangan Kiri & Kanan (Manusiawi)
     const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 16);
-    
     const leftArm = new THREE.Mesh(armGeo, catMat);
     leftArm.position.set(-0.45, 1.0, 0);
-    leftArm.rotation.z = 0.4; // Lengan agak membuka
+    leftArm.rotation.z = 0.4; 
     leftArm.castShadow = true;
     playerGroup.add(leftArm);
 
@@ -165,13 +155,21 @@ function createPlayerModel(catColorHex) {
     rightArm.castShadow = true;
     playerGroup.add(rightArm);
 
-    // 8. Ekor
     const tailGeo = new THREE.CylinderGeometry(0.06, 0.03, 0.7, 16);
     const tail = new THREE.Mesh(tailGeo, catMat);
     tail.position.set(0, 0.6, 0.35);
-    tail.rotation.x = -0.5; // Mengarah ke atas dan belakang
+    tail.rotation.x = -0.5; 
     tail.castShadow = true;
     playerGroup.add(tail);
+
+    // Simpan referensi organ tubuh ke userData untuk sistem animasi
+    playerGroup.userData = {
+        leftLeg: leftLeg,
+        rightLeg: rightLeg,
+        leftArm: leftArm,
+        rightArm: rightArm,
+        isMoving: false
+    };
 
     return playerGroup;
 }
@@ -179,18 +177,18 @@ function createPlayerModel(catColorHex) {
 const myColor = Math.random() * 0xffffff;
 const player = createPlayerModel(myColor);
 scene.add(player);
-
 camera.position.set(0, 5, 10);
 
-// Objek Pemain Lain
 const otherPlayers = {};
 
 // 4. LOGIKA MULTIPLAYER
-function updatePlayerPosition() {
+function updatePlayerPosition(isMoving) {
     playersRef.child(playerId).set({
         x: player.position.x,
         y: player.position.y,
         z: player.position.z,
+        rY: player.rotation.y, // Kirim arah rotasi karakter
+        isMoving: isMoving,    // Kirim status apakah sedang jalan
         color: myColor 
     });
 }
@@ -209,7 +207,10 @@ playersRef.on('value', (snapshot) => {
             scene.add(mesh);
             otherPlayers[id] = mesh;
         }
+        
         otherPlayers[id].position.set(data[id].x, data[id].y, data[id].z);
+        if(data[id].rY !== undefined) otherPlayers[id].rotation.y = data[id].rY;
+        otherPlayers[id].userData.isMoving = data[id].isMoving; // Sync animasi jalan
     }
     
     for (let id in otherPlayers) {
@@ -220,27 +221,65 @@ playersRef.on('value', (snapshot) => {
     }
 });
 
-// 5. KONTROL PC (WASD / Panah)
+// 5. KONTROL & ANIMASI
 const keys = {};
 window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
 const speed = 0.15; 
+let wasMoving = false;
+
 function handleMovement() {
-    let moved = false;
+    let dx = 0;
+    let dz = 0;
     
-    if (keys['w'] || keys['arrowup']) { player.position.z -= speed; moved = true; }
-    if (keys['s'] || keys['arrowdown']) { player.position.z += speed; moved = true; }
-    if (keys['a'] || keys['arrowleft']) { player.position.x -= speed; moved = true; }
-    if (keys['d'] || keys['arrowright']) { player.position.x += speed; moved = true; }
+    if (keys['w'] || keys['arrowup']) dz -= 1;
+    if (keys['s'] || keys['arrowdown']) dz += 1;
+    if (keys['a'] || keys['arrowleft']) dx -= 1;
+    if (keys['d'] || keys['arrowright']) dx += 1;
     
-    if (moved) {
+    if (dx !== 0 || dz !== 0) {
+        // Normalisasi kecepatan (agar tidak lari kilat saat jalan diagonal)
+        const length = Math.sqrt(dx * dx + dz * dz);
+        dx = (dx / length) * speed;
+        dz = (dz / length) * speed;
+
+        player.position.x += dx;
+        player.position.z += dz;
+        
+        // Memutar kucing agar menghadap arah berjalannya
+        const angle = Math.atan2(dx, dz);
+        player.rotation.y = angle;
+        
         camera.position.x = player.position.x;
         camera.position.z = player.position.z + 8;
         camera.position.y = player.position.y + 4;
-        camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
         
-        updatePlayerPosition();
+        updatePlayerPosition(true);
+        wasMoving = true;
+    } else {
+        if (wasMoving) {
+            updatePlayerPosition(false); // Berhenti
+            wasMoving = false;
+        }
+    }
+}
+
+// Fungsi Ayunan Tangan & Kaki
+function animateLimbs(model, isMoving) {
+    if (isMoving) {
+        const time = Date.now() * 0.015; // Kecepatan ayunan
+        // Tangan dan kaki mengayun berlawanan seperti manusia berjalan
+        model.userData.leftLeg.rotation.x = Math.sin(time) * 0.6;
+        model.userData.rightLeg.rotation.x = Math.sin(time + Math.PI) * 0.6;
+        model.userData.leftArm.rotation.x = Math.sin(time + Math.PI) * 0.6;
+        model.userData.rightArm.rotation.x = Math.sin(time) * 0.6;
+    } else {
+        // Kembali berdiri tegak saat berhenti
+        model.userData.leftLeg.rotation.x = 0;
+        model.userData.rightLeg.rotation.x = 0;
+        model.userData.leftArm.rotation.x = 0;
+        model.userData.rightArm.rotation.x = 0;
     }
 }
 
@@ -261,27 +300,4 @@ chatInput.addEventListener('keypress', (e) => {
 chatRef.on('child_added', (snapshot) => {
     const chat = snapshot.val();
     const msgEl = document.createElement('div');
-    msgEl.style.marginBottom = "5px";
-    msgEl.innerHTML = `<strong style="color: #333;">Kucing_${chat.id.substring(7, 11)}:</strong> ${chat.message}`;
-    chatBox.appendChild(msgEl);
-    chatBox.scrollTop = chatBox.scrollHeight;
-});
-
-// 7. RENDER LOOP 
-function animate() {
-    requestAnimationFrame(animate);
-    handleMovement();
-    
-    camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
-    
-    renderer.render(scene, camera);
-}
-animate();
-updatePlayerPosition();
-
-// 8. RESPONSIF LAYAR
-window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-});
+    msgEl.style.marginBottom = "5
