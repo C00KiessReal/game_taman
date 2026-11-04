@@ -48,7 +48,7 @@ grass.receiveShadow = true;
 scene.add(grass);
 
 // 3. KARAKTER PEMAIN (Bentuk Kapsul Imut Sementara)
-const playerGeometry = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+const playerGeometry = new THREE.CapsuleGeometry(1, 1.5, 1);
 const playerMaterial = new THREE.MeshLambertMaterial({ color: Math.random() * 0xffffff }); // Warna random per pemain
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
 player.position.y = 1;
