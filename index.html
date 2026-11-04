@@ -2,25 +2,31 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- Mencegah layar zoom otomatis di HP -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Taman Bermain Roleplay</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Library Three.js -->
+    
+    <!-- Library Three.js (Grafis 3D) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Library Firebase (Ganti config dengan milik Anda) -->
+    
+    <!-- Library Firebase (Server Multiplayer) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- Library Nipple.js (Joystick HP) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
 </head>
 <body>
     <div id="game-container"></div>
     
-    <!-- UI Chat & Roleplay -->
+    <!-- UI Chat -->
     <div id="ui-container">
         <div id="chat-box"></div>
         <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
     </div>
 
-    <!-- Virtual Joystick untuk HP (akan disembunyikan di PC) -->
+    <!-- Area Joystick -->
     <div id="joystick-zone"></div>
 
     <script src="app.js"></script>
