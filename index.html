@@ -2,23 +2,20 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <!-- Mencegah layar zoom otomatis di HP -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
     <title>Taman Bermain Roleplay</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Library Three.js (Grafis 3D) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <!-- Library Firebase (Server Multiplayer) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
-    <!-- Library Nipple.js (Joystick HP) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
 </head>
 <body>
     <div id="game-container"></div>
+    
+    <!-- Wadah untuk Nama Melayang -->
+    <div id="nametags-container"></div>
     
     <!-- UI Chat -->
     <div id="ui-container">
@@ -26,8 +23,9 @@
         <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
     </div>
 
-    <!-- Area Joystick -->
+    <!-- UI HP -->
     <div id="joystick-zone"></div>
+    <div id="jump-btn">Lompat🦘</div>
 
     <script src="app.js"></script>
 </body>
