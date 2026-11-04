@@ -11,15 +11,15 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-
 const playerId = 'player_' + Math.floor(Math.random() * 10000);
+const playerName = "Kucing_" + playerId.substring(7, 11);
 const playersRef = db.ref('players');
 const chatRef = db.ref('chats');
 
-// 2. SETUP THREE.JS
+// 2. SETUP THREE.JS & SIKLUS SIANG/MALAM
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
-scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+scene.fog = new THREE.Fog(0x87CEEB, 10, 60);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -32,10 +32,8 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(20, 30, 20);
 dirLight.castShadow = true;
-dirLight.shadow.camera.left = -50;
-dirLight.shadow.camera.right = 50;
-dirLight.shadow.camera.top = 50;
-dirLight.shadow.camera.bottom = -50;
+dirLight.shadow.camera.left = -50; dirLight.shadow.camera.right = 50;
+dirLight.shadow.camera.top = 50; dirLight.shadow.camera.bottom = -50;
 scene.add(dirLight);
 
 const grassGeometry = new THREE.PlaneGeometry(200, 200);
@@ -45,129 +43,103 @@ grass.rotation.x = -Math.PI / 2;
 grass.receiveShadow = true;
 scene.add(grass);
 
+// -- DEKORASI TAMAN (Jalan Setapak, Air Mancur, Trampolin) --
+const pathGeo = new THREE.PlaneGeometry(10, 200);
+const pathMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+const path = new THREE.Mesh(pathGeo, pathMat);
+path.rotation.x = -Math.PI / 2; path.position.y = 0.01; path.receiveShadow = true;
+scene.add(path);
+
+const fountainGeo = new THREE.BoxGeometry(6, 1, 6);
+const fountainMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+const fountain = new THREE.Mesh(fountainGeo, fountainMat);
+fountain.position.set(0, 0.5, 0); fountain.castShadow = true; scene.add(fountain);
+const waterGeo = new THREE.BoxGeometry(5, 1.2, 5);
+const waterMat = new THREE.MeshLambertMaterial({ color: 0x00aaff, transparent: true, opacity: 0.8 });
+const water = new THREE.Mesh(waterGeo, waterMat);
+water.position.set(0, 0.5, 0); scene.add(water);
+
+// Trampolin
+const trampGeo = new THREE.CylinderGeometry(3, 3, 0.5, 32);
+const trampMat = new THREE.MeshLambertMaterial({ color: 0xff3333 });
+const trampoline = new THREE.Mesh(trampGeo, trampMat);
+trampoline.position.set(-15, 0.25, -15);
+trampoline.castShadow = true; trampoline.receiveShadow = true;
+scene.add(trampoline);
+const trampCenterGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.52, 32);
+const trampCenterMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+const trampCenter = new THREE.Mesh(trampCenterGeo, trampCenterMat);
+trampCenter.position.set(-15, 0.25, -15); scene.add(trampCenter);
+
+// Pohon
 function createTree(x, z) {
+    if(Math.abs(x) < 6 && Math.abs(z) < 6) return; // Jangan tumbuh di air mancur
     const treeGroup = new THREE.Group();
-    const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 8);
-    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 1; 
-    trunk.castShadow = true;
-    treeGroup.add(trunk);
-
-    const leavesGeo = new THREE.ConeGeometry(1.5, 3, 8);
-    const leavesMat = new THREE.MeshLambertMaterial({ color: 0x228B22 });
-    const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-    leaves.position.y = 3;
-    leaves.castShadow = true;
-    treeGroup.add(leaves);
-
-    treeGroup.position.set(x, 0, z);
-    scene.add(treeGroup);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 8), new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
+    trunk.position.y = 1; trunk.castShadow = true; treeGroup.add(trunk);
+    const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3, 8), new THREE.MeshLambertMaterial({ color: 0x228B22 }));
+    leaves.position.y = 3; leaves.castShadow = true; treeGroup.add(leaves);
+    treeGroup.position.set(x, 0, z); scene.add(treeGroup);
+}
+for(let i = 0; i < 60; i++) {
+    createTree((Math.random() - 0.5) * 150, (Math.random() - 0.5) * 150);
 }
 
-for(let i = 0; i < 40; i++) {
-    let randomX = (Math.random() - 0.5) * 150;
-    let randomZ = (Math.random() - 0.5) * 150;
-    createTree(randomX, randomZ);
-}
-
-// 3. MODEL KARAKTER KUCING
+// 3. MODEL KARAKTER KUCING DENGAN SENTER
 function createPlayerModel(catColorHex) {
     const playerGroup = new THREE.Group();
-
-    const safeColor = catColorHex || 0xffffff; 
-    const catMat = new THREE.MeshLambertMaterial({ color: safeColor });
+    const catMat = new THREE.MeshLambertMaterial({ color: catColorHex || 0xffffff });
     const darkMat = new THREE.MeshLambertMaterial({ color: 0x222222 }); 
     const pinkMat = new THREE.MeshLambertMaterial({ color: 0xffaaaa }); 
     const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff }); 
 
-    const bodyGeo = new THREE.SphereGeometry(0.35, 32, 16);
-    const body = new THREE.Mesh(bodyGeo, catMat);
-    body.scale.set(1, 1.4, 1); 
-    body.position.y = 0.9; 
-    body.castShadow = true;
-    playerGroup.add(body);
-
-    const headGeo = new THREE.SphereGeometry(0.38, 32, 32);
-    const head = new THREE.Mesh(headGeo, catMat);
-    head.position.set(0, 1.6, 0); 
-    head.castShadow = true;
-    playerGroup.add(head);
-
-    const earGeo = new THREE.ConeGeometry(0.12, 0.25, 16);
-    const leftEar = new THREE.Mesh(earGeo, catMat);
-    leftEar.position.set(-0.2, 1.85, 0);
-    leftEar.rotation.z = 0.3;
-    leftEar.castShadow = true;
-    playerGroup.add(leftEar);
-
-    const rightEar = new THREE.Mesh(earGeo, catMat);
-    rightEar.position.set(0.2, 1.85, 0);
-    rightEar.rotation.z = -0.3;
-    rightEar.castShadow = true;
-    playerGroup.add(rightEar);
-
-    const eyeWhiteGeo = new THREE.SphereGeometry(0.09, 16, 16);
-    const eyePupilGeo = new THREE.SphereGeometry(0.04, 16, 16);
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.35, 32, 16), catMat);
+    body.scale.set(1, 1.4, 1); body.position.y = 0.9; body.castShadow = true; playerGroup.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 32), catMat);
+    head.position.set(0, 1.6, 0); head.castShadow = true; playerGroup.add(head);
     
-    const leftEyeW = new THREE.Mesh(eyeWhiteGeo, whiteMat);
-    leftEyeW.position.set(-0.15, 1.65, -0.32);
-    playerGroup.add(leftEyeW);
-    const leftEyeP = new THREE.Mesh(eyePupilGeo, darkMat);
-    leftEyeP.position.set(-0.15, 1.65, -0.40);
-    playerGroup.add(leftEyeP);
-
-    const rightEyeW = new THREE.Mesh(eyeWhiteGeo, whiteMat);
-    rightEyeW.position.set(0.15, 1.65, -0.32);
-    playerGroup.add(rightEyeW);
-    const rightEyeP = new THREE.Mesh(eyePupilGeo, darkMat);
-    rightEyeP.position.set(0.15, 1.65, -0.40);
-    playerGroup.add(rightEyeP);
-
-    const noseGeo = new THREE.SphereGeometry(0.05, 16, 16);
-    const nose = new THREE.Mesh(noseGeo, pinkMat);
-    nose.position.set(0, 1.55, -0.36);
-    playerGroup.add(nose);
-
+    const leftEar = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 16), catMat);
+    leftEar.position.set(-0.2, 1.85, 0); leftEar.rotation.z = 0.3; playerGroup.add(leftEar);
+    const rightEar = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 16), catMat);
+    rightEar.position.set(0.2, 1.85, 0); rightEar.rotation.z = -0.3; playerGroup.add(rightEar);
+    
+    const lEyeW = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), whiteMat);
+    lEyeW.position.set(-0.15, 1.65, -0.32); playerGroup.add(lEyeW);
+    const lEyeP = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), darkMat);
+    lEyeP.position.set(-0.15, 1.65, -0.40); playerGroup.add(lEyeP);
+    const rEyeW = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), whiteMat);
+    rEyeW.position.set(0.15, 1.65, -0.32); playerGroup.add(rEyeW);
+    const rEyeP = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), darkMat);
+    rEyeP.position.set(0.15, 1.65, -0.40); playerGroup.add(rEyeP);
+    
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), pinkMat);
+    nose.position.set(0, 1.55, -0.36); playerGroup.add(nose);
+    
     const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.45, 16);
-    const leftLeg = new THREE.Mesh(legGeo, catMat);
-    leftLeg.position.set(-0.15, 0.22, 0);
-    leftLeg.castShadow = true;
-    playerGroup.add(leftLeg);
-
-    const rightLeg = new THREE.Mesh(legGeo, catMat);
-    rightLeg.position.set(0.15, 0.22, 0);
-    rightLeg.castShadow = true;
-    playerGroup.add(rightLeg);
-
+    const leftLeg = new THREE.Mesh(legGeo, catMat); leftLeg.position.set(-0.15, 0.22, 0); playerGroup.add(leftLeg);
+    const rightLeg = new THREE.Mesh(legGeo, catMat); rightLeg.position.set(0.15, 0.22, 0); playerGroup.add(rightLeg);
+    
     const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 16);
-    const leftArm = new THREE.Mesh(armGeo, catMat);
-    leftArm.position.set(-0.45, 1.0, 0);
-    leftArm.rotation.z = 0.4; 
-    leftArm.castShadow = true;
-    playerGroup.add(leftArm);
+    const leftArm = new THREE.Mesh(armGeo, catMat); leftArm.position.set(-0.45, 1.0, 0); leftArm.rotation.z = 0.4; playerGroup.add(leftArm);
+    const rightArm = new THREE.Mesh(armGeo, catMat); rightArm.position.set(0.45, 1.0, 0); rightArm.rotation.z = -0.4; playerGroup.add(rightArm);
+    
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, 0.7, 16), catMat);
+    tail.position.set(0, 0.6, 0.35); tail.rotation.x = -0.5; playerGroup.add(tail);
 
-    const rightArm = new THREE.Mesh(armGeo, catMat);
-    rightArm.position.set(0.45, 1.0, 0);
-    rightArm.rotation.z = -0.4;
-    rightArm.castShadow = true;
-    playerGroup.add(rightArm);
-
-    const tailGeo = new THREE.CylinderGeometry(0.06, 0.03, 0.7, 16);
-    const tail = new THREE.Mesh(tailGeo, catMat);
-    tail.position.set(0, 0.6, 0.35);
-    tail.rotation.x = -0.5; 
-    tail.castShadow = true;
-    playerGroup.add(tail);
+    // Senter Otomatis saat Malam (SpotLight)
+    const flashlight = new THREE.SpotLight(0xffffee, 0); // Mulai dengan intensitas 0
+    flashlight.position.set(0, 1.5, -0.5);
+    flashlight.target.position.set(0, 0.5, -5); // Mengarah ke depan kucing
+    flashlight.angle = Math.PI / 6;
+    flashlight.penumbra = 0.5;
+    flashlight.distance = 20;
+    playerGroup.add(flashlight);
+    playerGroup.add(flashlight.target);
 
     playerGroup.userData = {
-        leftLeg: leftLeg,
-        rightLeg: rightLeg,
-        leftArm: leftArm,
-        rightArm: rightArm,
-        isMoving: false
+        leftLeg: leftLeg, rightLeg: rightLeg, leftArm: leftArm, rightArm: rightArm,
+        flashlight: flashlight, isMoving: false
     };
-
     return playerGroup;
 }
 
@@ -178,138 +150,151 @@ camera.position.set(0, 5, 10);
 
 const otherPlayers = {};
 
+// -- SISTEM NAMETAG --
+const nametagsContainer = document.getElementById('nametags-container');
+function updateNametag(mesh, nameText, id) {
+    let div = document.getElementById('tag_' + id);
+    if (!div) {
+        div = document.createElement('div');
+        div.id = 'tag_' + id;
+        div.className = 'nametag';
+        div.innerText = nameText;
+        nametagsContainer.appendChild(div);
+    }
+    
+    const vector = new THREE.Vector3();
+    mesh.getWorldPosition(vector);
+    vector.y += 2.2; // Muncul tepat di atas kepala
+    vector.project(camera); // Ubah kordinat 3D ke 2D Layar
+    
+    // Cek apakah pemain berada di depan kamera
+    if (vector.z < 1 && vector.z > -1) {
+        div.style.display = 'block';
+        div.style.left = (vector.x * 0.5 + 0.5) * window.innerWidth + 'px';
+        div.style.top = (vector.y * -0.5 + 0.5) * window.innerHeight + 'px';
+    } else {
+        div.style.display = 'none';
+    }
+}
+
 // 4. LOGIKA MULTIPLAYER
 function updatePlayerPosition(isMoving) {
     playersRef.child(playerId).set({
-        x: player.position.x,
-        y: player.position.y,
-        z: player.position.z,
-        rY: player.rotation.y, 
-        isMoving: isMoving,    
-        color: myColor 
+        name: playerName,
+        x: player.position.x, y: player.position.y, z: player.position.z,
+        rY: player.rotation.y, isMoving: isMoving, color: myColor 
     });
 }
-
-window.addEventListener("beforeunload", () => {
-    playersRef.child(playerId).remove();
-});
+window.addEventListener("beforeunload", () => { playersRef.child(playerId).remove(); });
 
 playersRef.on('value', (snapshot) => {
     const data = snapshot.val();
-    
     for (let id in data) {
         if (id === playerId) continue; 
-        
-        if (data[id].x === undefined || data[id].y === undefined || data[id].z === undefined) {
-            continue; 
-        }
+        if (data[id].x === undefined) continue; 
         
         if (!otherPlayers[id]) {
             const mesh = createPlayerModel(data[id].color);
             scene.add(mesh);
             otherPlayers[id] = mesh;
         }
-        
         otherPlayers[id].position.set(data[id].x, data[id].y, data[id].z);
-        if (data[id].rY !== undefined) {
-            otherPlayers[id].rotation.y = data[id].rY;
-        }
+        if (data[id].rY !== undefined) otherPlayers[id].rotation.y = data[id].rY;
         otherPlayers[id].userData.isMoving = data[id].isMoving || false;
+        otherPlayers[id].userData.name = data[id].name || "Anon";
     }
-    
     for (let id in otherPlayers) {
-        if (!data || !data[id] || data[id].x === undefined) {
+        if (!data || !data[id]) {
             scene.remove(otherPlayers[id]);
             delete otherPlayers[id];
+            // Hapus nametag pemain yang keluar
+            const oldTag = document.getElementById('tag_' + id);
+            if (oldTag) oldTag.remove();
         }
     }
 });
 
-// 5. KONTROL (KEYBOARD & JOYSTICK)
+// 5. KONTROL, LOMPAT & JOYSTICK
 const keys = {};
 window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
 const speed = 0.15; 
 let wasMoving = false;
+let joystickDx = 0; let joystickDz = 0; let isJoystickActive = false;
 
-// Joystick Variables
-let joystickDx = 0;
-let joystickDz = 0;
-let isJoystickActive = false;
+// Variabel Gravitasi & Lompat
+let velocityY = 0;
+const gravity = -0.015;
+const jumpStrength = 0.3;
+const floorHeight = 0; // Tinggi tanah dasar
+let isGrounded = true;
 
-// Inisialisasi Nipple.js
+// Sistem Lompat (PC & Mobile)
+function triggerJump() {
+    if (isGrounded) {
+        velocityY = jumpStrength;
+        isGrounded = false;
+    }
+}
+window.addEventListener('keydown', (e) => { if(e.key === ' ') triggerJump(); });
+document.getElementById('jump-btn').addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
+document.getElementById('jump-btn').addEventListener('mousedown', (e) => { e.preventDefault(); triggerJump(); });
+
 const joystickZone = document.getElementById('joystick-zone');
-const manager = nipplejs.create({
-    zone: joystickZone,
-    mode: 'static',
-    position: { left: '50%', top: '50%' },
-    color: 'white',
-    size: 100
-});
-
-manager.on('move', function (evt, data) {
+const manager = nipplejs.create({ zone: joystickZone, mode: 'static', position: { left: '50%', top: '50%' }, color: 'white', size: 100 });
+manager.on('move', (evt, data) => {
     isJoystickActive = true;
-    const angle = data.angle.radian;
     const force = Math.min(data.force, 1);
-    
-    joystickDx = Math.cos(angle) * force;
-    joystickDz = -Math.sin(angle) * force;
+    joystickDx = Math.cos(data.angle.radian) * force; joystickDz = -Math.sin(data.angle.radian) * force;
 });
-
-manager.on('end', function () {
-    isJoystickActive = false;
-    joystickDx = 0;
-    joystickDz = 0;
-});
+manager.on('end', () => { isJoystickActive = false; joystickDx = 0; joystickDz = 0; });
 
 function handleMovement() {
-    let dx = 0;
-    let dz = 0;
+    let dx = 0; let dz = 0;
+    if (keys['w'] || keys['arrowup']) dz -= 1; if (keys['s'] || keys['arrowdown']) dz += 1;
+    if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1;
     
-    // Input Keyboard
-    if (keys['w'] || keys['arrowup']) dz -= 1;
-    if (keys['s'] || keys['arrowdown']) dz += 1;
-    if (keys['a'] || keys['arrowleft']) dx -= 1;
-    if (keys['d'] || keys['arrowright']) dx += 1;
-    
-    // Override dengan Joystick jika disentuh (HP)
-    if (isJoystickActive) {
-        dx = joystickDx;
-        dz = joystickDz;
-    }
-    
+    if (isJoystickActive) { dx = joystickDx; dz = joystickDz; }
     if (dx !== 0 || dz !== 0) {
-        // Normalisasi untuk keyboard
         if (!isJoystickActive) {
             const length = Math.sqrt(dx * dx + dz * dz);
-            dx = (dx / length);
-            dz = (dz / length);
+            dx = (dx / length); dz = (dz / length);
         }
-
-        player.position.x += dx * speed;
-        player.position.z += dz * speed;
-        
-        const angle = Math.atan2(dx, dz);
-        player.rotation.y = angle;
-        
-        camera.position.x = player.position.x;
-        camera.position.z = player.position.z + 8;
-        camera.position.y = player.position.y + 4;
-        
-        updatePlayerPosition(true);
+        player.position.x += dx * speed; player.position.z += dz * speed;
+        player.rotation.y = Math.atan2(dx, dz);
         wasMoving = true;
     } else {
-        if (wasMoving) {
-            updatePlayerPosition(false);
-            wasMoving = false;
+        wasMoving = false;
+    }
+
+    // Fisika Gravitasi & Trampolin
+    if (!isGrounded || player.position.y > floorHeight) {
+        velocityY += gravity;
+        player.position.y += velocityY;
+        
+        // Cek interaksi Trampolin
+        const distToTramp = Math.hypot(player.position.x - trampoline.position.x, player.position.z - trampoline.position.z);
+        if (distToTramp < 3 && player.position.y <= 0.75 && velocityY < 0) {
+            // Mental tinggi!
+            velocityY = 0.55; 
+            isGrounded = false;
+        } 
+        else if (player.position.y <= floorHeight) {
+            player.position.y = floorHeight;
+            velocityY = 0;
+            isGrounded = true;
         }
     }
+
+    camera.position.x = player.position.x;
+    camera.position.z = player.position.z + 10;
+    camera.position.y = player.position.y + 5;
+    updatePlayerPosition(wasMoving);
 }
 
 function animateLimbs(model, isMoving) {
     if (!model || !model.userData) return;
-
     if (isMoving) {
         const time = Date.now() * 0.015; 
         model.userData.leftLeg.rotation.x = Math.sin(time) * 0.6;
@@ -317,56 +302,77 @@ function animateLimbs(model, isMoving) {
         model.userData.leftArm.rotation.x = Math.sin(time + Math.PI) * 0.6;
         model.userData.rightArm.rotation.x = Math.sin(time) * 0.6;
     } else {
-        model.userData.leftLeg.rotation.x = 0;
-        model.userData.rightLeg.rotation.x = 0;
-        model.userData.leftArm.rotation.x = 0;
-        model.userData.rightArm.rotation.x = 0;
+        model.userData.leftLeg.rotation.x = 0; model.userData.rightLeg.rotation.x = 0;
+        model.userData.leftArm.rotation.x = 0; model.userData.rightArm.rotation.x = 0;
     }
 }
 
-// 6. SISTEM CHAT
+// 6. SIKLUS SIANG/MALAM (Waktu Berjalan)
+let gameTime = 0;
+function updateEnvironment() {
+    gameTime += 0.001; // Kecepatan putaran hari
+    // Hitung siklus matahari menggunakan gelombang (1 = Siang terik, -1 = Malam gelap)
+    const sunIntensity = Math.sin(gameTime); 
+    
+    // Perubahan warna langit dari biru ke gelap
+    const lightness = Math.max(0.05, (sunIntensity + 1) / 2 * 0.6 + 0.1); 
+    const skyColor = new THREE.Color().setHSL(0.55, 0.5, lightness);
+    
+    scene.background = skyColor;
+    scene.fog.color = skyColor;
+    dirLight.intensity = Math.max(0, sunIntensity * 0.8);
+    ambientLight.intensity = Math.max(0.1, sunIntensity * 0.4 + 0.1);
+
+    // Nyalakan senter otomatis jika malam tiba (sunIntensity < 0)
+    const isNight = sunIntensity < 0.2;
+    player.userData.flashlight.intensity = isNight ? 1 : 0;
+    for(let id in otherPlayers) {
+        if(otherPlayers[id].userData.flashlight) {
+            otherPlayers[id].userData.flashlight.intensity = isNight ? 1 : 0;
+        }
+    }
+}
+
+// 7. SISTEM CHAT
 const chatInput = document.getElementById('chat-input');
 const chatBox = document.getElementById('chat-box');
-
 chatInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && chatInput.value !== "") {
-        chatRef.push({
-            id: playerId,
-            message: chatInput.value
-        });
+        chatRef.push({ name: playerName, message: chatInput.value });
         chatInput.value = "";
     }
 });
-
 chatRef.on('child_added', (snapshot) => {
     const chat = snapshot.val();
     const msgEl = document.createElement('div');
     msgEl.style.marginBottom = "5px";
-    const nameTag = chat.id ? chat.id.substring(7, 11) : "Anon";
-    msgEl.innerHTML = '<strong style="color: #333;">Kucing_' + nameTag + ':</strong> ' + chat.message;
+    msgEl.innerHTML = `<strong style="color: #333;">${chat.name}:</strong> ${chat.message}`;
     chatBox.appendChild(msgEl);
     chatBox.scrollTop = chatBox.scrollHeight;
 });
 
-// 7. RENDER LOOP 
+// 8. RENDER LOOP 
 function animate() {
     requestAnimationFrame(animate);
+    
     handleMovement();
+    updateEnvironment(); // Jalankan waktu
     
     animateLimbs(player, wasMoving);
+    updateNametag(player, playerName + " (Kamu)", playerId); // Update nametag diri sendiri
     
     for(let id in otherPlayers) {
         animateLimbs(otherPlayers[id], otherPlayers[id].userData.isMoving);
+        updateNametag(otherPlayers[id], otherPlayers[id].userData.name, id); // Update nametag teman
     }
     
+    // Kamera fokus ke kucing
     camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
-    
     renderer.render(scene, camera);
 }
 animate();
 updatePlayerPosition(false);
 
-// 8. RESPONSIF LAYAR
 window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
