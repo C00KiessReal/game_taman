@@ -2,56 +2,93 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Taman Bermain Roleplay</title>
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- Tiga Script Wajib Three.js & GLTFLoader -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    
-    <!-- Script Firebase & NippleJS -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Loader - 3D Open World</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; } /* Warna langit dasar */
+    </style>
 </head>
 <body>
-    <div id="game-container"></div>
-    <div id="nametags-container"></div>
-    
-    <!-- LAYAR LOGIN / MASUK -->
-    <div id="login-screen">
-        <div class="login-box">
-            <h2>Masuk ke Taman</h2>
-            <p>Pilih karaktermu!</p>
-            
-            <input type="text" id="username-input" placeholder="Ketik Username..." maxlength="15">
-            
-            <div class="custom-group">
-                <label>Karakter:</label>
-                <select id="gender-select">
-                    <!-- Namanya bisa disesuaikan kalau modelnya cowok semua -->
-                    <option value="male">Karakter Male A</option>
-                    <option value="female">Karakter Default</option>
-                </select>
-            </div>
-            
-            <button id="play-btn">Main Sekarang 🚀</button>
-        </div>
-    </div>
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+        import { MTLLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/MTLLoader.js';
+        import { OBJLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/OBJLoader.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
 
-    <!-- UI DALAM GAME -->
-    <div id="game-ui" style="display: none;">
-        <div id="ui-container">
-            <div id="chat-box"></div>
-            <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
-        </div>
+        // 1. Setup Scene, Camera, & Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.5, 3);
 
-        <div id="joystick-zone"></div>
-        <div id="jump-btn">Lompat🦘</div>
-        <div id="cam-btn">📷 Kamera</div>
-    </div>
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
 
-    <script src="app.js"></script>
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1, 0);
+        controls.update();
+
+        // 2. Pencahayaan (Lighting)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // 3. Fungsi Load Karakter
+        function loadCharacter(mtlPath, objPath, positionX) {
+            const mtlLoader = new MTLLoader();
+            // Path disesuaikan dengan struktur folder proyekmu
+            mtlLoader.setPath('./assets/models/'); 
+            
+            mtlLoader.load(mtlPath, (materials) => {
+                materials.preload();
+                
+                const objLoader = new OBJLoader();
+                objLoader.setMaterials(materials);
+                objLoader.setPath('./assets/models/');
+                
+                objLoader.load(objPath, (object) => {
+                    object.position.set(positionX, 0, 0);
+                    // Menyesuaikan skala jika model terlalu kecil/besar
+                    object.scale.set(10, 10, 10); 
+                    
+                    object.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    scene.add(object);
+                });
+            });
+        }
+
+        // Memuat Karakter Pria dan Wanita berdampingan
+        loadCharacter('character-male-b.mtl', 'character-male-b.obj', -1);
+        loadCharacter('character-female-b.mtl', 'character-female-b.obj', 1);
+
+        // 4. Grid Helper untuk referensi lantai
+        const gridHelper = new THREE.GridHelper(10, 10);
+        scene.add(gridHelper);
+
+        // 5. Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
 </body>
 </html>
