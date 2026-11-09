@@ -15,15 +15,33 @@
     <div id="game-container"></div>
     <div id="nametags-container"></div>
     
-    <div id="ui-container">
-        <div id="chat-box"></div>
-        <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
+    <!-- Layar Login / Buat Karakter -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Masuk ke Taman</h2>
+            <p>Buat karakter atau gunakan nama lamamu</p>
+            <input type="text" id="username-input" placeholder="Ketik Username..." maxlength="15">
+            
+            <div class="color-picker-zone">
+                <label>Pilih Warna Baju:</label>
+                <input type="color" id="color-input" value="#ff3366">
+            </div>
+            
+            <button id="play-btn">Main Sekarang!</button>
+        </div>
     </div>
 
-    <!-- UI Kontrol HP -->
-    <div id="joystick-zone"></div>
-    <div id="jump-btn">Lompat🦘</div>
-    <div id="cam-btn">📷 Kamera</div>
+    <!-- UI Game (Sembunyi sebelum login) -->
+    <div id="game-ui" style="display: none;">
+        <div id="ui-container">
+            <div id="chat-box"></div>
+            <input type="text" id="chat-input" placeholder="Ketik untuk ngobrol...">
+        </div>
+
+        <div id="joystick-zone"></div>
+        <div id="jump-btn">Lompat🦘</div>
+        <div id="cam-btn">📷 Kamera</div>
+    </div>
 
     <script src="app.js"></script>
 </body>
