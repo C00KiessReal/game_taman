@@ -1,38 +1,48 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Character Viewer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cat Roleplay - 3D Multiplayer</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
     body {
+      margin: 0;
       overflow: hidden;
-      background-color: #1a1a1a;
+      background-color: #87CEEB; /* Warna langit standar */
       font-family: sans-serif;
     }
-    #canvas-container {
-      width: 100vw;
-      height: 100vh;
+    #ui-container {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      color: white;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 15px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
     }
   </style>
 
-  <!-- Import Three.js via ES Modules -->
+  <!-- Import Map untuk Three.js dan Firebase -->
   <script type="importmap">
     {
       "imports": {
         "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+        "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
       }
     }
   </script>
 </head>
 <body>
-  <div id="canvas-container"></div>
-  <script type="module" src="app.js"></script>
+  <div id="ui-container">
+    <h3>Kontrol Karakter</h3>
+    <p>[ W/A/S/D ] Bergerak</p>
+    <p>[ C ] Ubah Kamera (FPP / TPP)</p>
+  </div>
+  
+  <script type="module" src="game.js"></script>
 </body>
 </html>
