@@ -16,7 +16,7 @@ const playerName = "Kucing_" + playerId.substring(7, 11);
 const playersRef = db.ref('players');
 const chatRef = db.ref('chats');
 
-// 2. SETUP THREE.JS & SIKLUS SIANG/MALAM
+// 2. SETUP THREE.JS
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
 scene.fog = new THREE.Fog(0x87CEEB, 10, 60);
@@ -43,7 +43,7 @@ grass.rotation.x = -Math.PI / 2;
 grass.receiveShadow = true;
 scene.add(grass);
 
-// -- DEKORASI TAMAN (Jalan Setapak, Air Mancur, Trampolin) --
+// -- DEKORASI TAMAN --
 const pathGeo = new THREE.PlaneGeometry(10, 200);
 const pathMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
 const path = new THREE.Mesh(pathGeo, pathMat);
@@ -59,7 +59,6 @@ const waterMat = new THREE.MeshLambertMaterial({ color: 0x00aaff, transparent: t
 const water = new THREE.Mesh(waterGeo, waterMat);
 water.position.set(0, 0.5, 0); scene.add(water);
 
-// Trampolin
 const trampGeo = new THREE.CylinderGeometry(3, 3, 0.5, 32);
 const trampMat = new THREE.MeshLambertMaterial({ color: 0xff3333 });
 const trampoline = new THREE.Mesh(trampGeo, trampMat);
@@ -71,9 +70,8 @@ const trampCenterMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
 const trampCenter = new THREE.Mesh(trampCenterGeo, trampCenterMat);
 trampCenter.position.set(-15, 0.25, -15); scene.add(trampCenter);
 
-// Pohon
 function createTree(x, z) {
-    if(Math.abs(x) < 6 && Math.abs(z) < 6) return; // Jangan tumbuh di air mancur
+    if(Math.abs(x) < 6 && Math.abs(z) < 6) return;
     const treeGroup = new THREE.Group();
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 2, 8), new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
     trunk.position.y = 1; trunk.castShadow = true; treeGroup.add(trunk);
@@ -85,7 +83,7 @@ for(let i = 0; i < 60; i++) {
     createTree((Math.random() - 0.5) * 150, (Math.random() - 0.5) * 150);
 }
 
-// 3. MODEL KARAKTER KUCING DENGAN SENTER
+// 3. MODEL KARAKTER
 function createPlayerModel(catColorHex) {
     const playerGroup = new THREE.Group();
     const catMat = new THREE.MeshLambertMaterial({ color: catColorHex || 0xffffff });
@@ -126,15 +124,11 @@ function createPlayerModel(catColorHex) {
     const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, 0.7, 16), catMat);
     tail.position.set(0, 0.6, 0.35); tail.rotation.x = -0.5; playerGroup.add(tail);
 
-    // Senter Otomatis saat Malam (SpotLight)
-    const flashlight = new THREE.SpotLight(0xffffee, 0); // Mulai dengan intensitas 0
+    const flashlight = new THREE.SpotLight(0xffffee, 0);
     flashlight.position.set(0, 1.5, -0.5);
-    flashlight.target.position.set(0, 0.5, -5); // Mengarah ke depan kucing
-    flashlight.angle = Math.PI / 6;
-    flashlight.penumbra = 0.5;
-    flashlight.distance = 20;
-    playerGroup.add(flashlight);
-    playerGroup.add(flashlight.target);
+    flashlight.target.position.set(0, 0.5, -5);
+    flashlight.angle = Math.PI / 6; flashlight.penumbra = 0.5; flashlight.distance = 20;
+    playerGroup.add(flashlight); playerGroup.add(flashlight.target);
 
     playerGroup.userData = {
         leftLeg: leftLeg, rightLeg: rightLeg, leftArm: leftArm, rightArm: rightArm,
@@ -146,13 +140,25 @@ function createPlayerModel(catColorHex) {
 const myColor = Math.random() * 0xffffff;
 const player = createPlayerModel(myColor);
 scene.add(player);
-camera.position.set(0, 5, 10);
+
+// -- LOGIKA TOGGLE KAMERA TPP/FPP --
+let cameraMode = 'TPP';
+
+function toggleCameraMode() {
+    cameraMode = (cameraMode === 'TPP') ? 'FPP' : 'TPP';
+    // Sembunyikan badan kucing saat mode FPP agar tidak menutupi kamera
+    player.visible = (cameraMode === 'TPP');
+}
+
+window.addEventListener('keydown', (e) => { if(e.key.toLowerCase() === 'c') toggleCameraMode(); });
+document.getElementById('cam-btn').addEventListener('touchstart', (e) => { e.preventDefault(); toggleCameraMode(); });
+document.getElementById('cam-btn').addEventListener('mousedown', (e) => { e.preventDefault(); toggleCameraMode(); });
 
 const otherPlayers = {};
 
 // -- SISTEM NAMETAG --
 const nametagsContainer = document.getElementById('nametags-container');
-function updateNametag(mesh, nameText, id) {
+function updateNametag(mesh, nameText, id, isSelf = false) {
     let div = document.getElementById('tag_' + id);
     if (!div) {
         div = document.createElement('div');
@@ -162,12 +168,17 @@ function updateNametag(mesh, nameText, id) {
         nametagsContainer.appendChild(div);
     }
     
+    // Jangan tampilkan nametag milik sendiri jika sedang mode FPP
+    if (isSelf && cameraMode === 'FPP') {
+        div.style.display = 'none';
+        return;
+    }
+
     const vector = new THREE.Vector3();
     mesh.getWorldPosition(vector);
-    vector.y += 2.2; // Muncul tepat di atas kepala
-    vector.project(camera); // Ubah kordinat 3D ke 2D Layar
+    vector.y += 2.2; 
+    vector.project(camera); 
     
-    // Cek apakah pemain berada di depan kamera
     if (vector.z < 1 && vector.z > -1) {
         div.style.display = 'block';
         div.style.left = (vector.x * 0.5 + 0.5) * window.innerWidth + 'px';
@@ -180,8 +191,7 @@ function updateNametag(mesh, nameText, id) {
 // 4. LOGIKA MULTIPLAYER
 function updatePlayerPosition(isMoving) {
     playersRef.child(playerId).set({
-        name: playerName,
-        x: player.position.x, y: player.position.y, z: player.position.z,
+        name: playerName, x: player.position.x, y: player.position.y, z: player.position.z,
         rY: player.rotation.y, isMoving: isMoving, color: myColor 
     });
 }
@@ -207,14 +217,13 @@ playersRef.on('value', (snapshot) => {
         if (!data || !data[id]) {
             scene.remove(otherPlayers[id]);
             delete otherPlayers[id];
-            // Hapus nametag pemain yang keluar
             const oldTag = document.getElementById('tag_' + id);
             if (oldTag) oldTag.remove();
         }
     }
 });
 
-// 5. KONTROL, LOMPAT & JOYSTICK
+// 5. KONTROL GERAKAN
 const keys = {};
 window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
@@ -223,19 +232,14 @@ const speed = 0.15;
 let wasMoving = false;
 let joystickDx = 0; let joystickDz = 0; let isJoystickActive = false;
 
-// Variabel Gravitasi & Lompat
 let velocityY = 0;
 const gravity = -0.015;
 const jumpStrength = 0.3;
-const floorHeight = 0; // Tinggi tanah dasar
+const floorHeight = 0; 
 let isGrounded = true;
 
-// Sistem Lompat (PC & Mobile)
 function triggerJump() {
-    if (isGrounded) {
-        velocityY = jumpStrength;
-        isGrounded = false;
-    }
+    if (isGrounded) { velocityY = jumpStrength; isGrounded = false; }
 }
 window.addEventListener('keydown', (e) => { if(e.key === ' ') triggerJump(); });
 document.getElementById('jump-btn').addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
@@ -268,28 +272,37 @@ function handleMovement() {
         wasMoving = false;
     }
 
-    // Fisika Gravitasi & Trampolin
     if (!isGrounded || player.position.y > floorHeight) {
         velocityY += gravity;
         player.position.y += velocityY;
         
-        // Cek interaksi Trampolin
         const distToTramp = Math.hypot(player.position.x - trampoline.position.x, player.position.z - trampoline.position.z);
         if (distToTramp < 3 && player.position.y <= 0.75 && velocityY < 0) {
-            // Mental tinggi!
-            velocityY = 0.55; 
-            isGrounded = false;
+            velocityY = 0.55; isGrounded = false;
         } 
         else if (player.position.y <= floorHeight) {
-            player.position.y = floorHeight;
-            velocityY = 0;
-            isGrounded = true;
+            player.position.y = floorHeight; velocityY = 0; isGrounded = true;
         }
     }
 
-    camera.position.x = player.position.x;
-    camera.position.z = player.position.z + 10;
-    camera.position.y = player.position.y + 5;
+    // UPDATE LOGIKA POSISI KAMERA TPP/FPP
+    if (cameraMode === 'TPP') {
+        camera.position.x = player.position.x;
+        camera.position.z = player.position.z + 10;
+        camera.position.y = player.position.y + 5;
+        camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
+    } else {
+        // Mode FPP: Posisikan kamera tepat di tinggi kepala kucing
+        camera.position.x = player.position.x;
+        camera.position.y = player.position.y + 1.6; 
+        camera.position.z = player.position.z;
+        
+        // Buat kamera menghadap persis ke arah badan kucing diputar
+        const targetX = player.position.x + Math.sin(player.rotation.y) * 5;
+        const targetZ = player.position.z + Math.cos(player.rotation.y) * 5;
+        camera.lookAt(targetX, player.position.y + 1.6, targetZ);
+    }
+
     updatePlayerPosition(wasMoving);
 }
 
@@ -307,23 +320,18 @@ function animateLimbs(model, isMoving) {
     }
 }
 
-// 6. SIKLUS SIANG/MALAM (Waktu Berjalan)
+// 6. SIKLUS SIANG/MALAM
 let gameTime = 0;
 function updateEnvironment() {
-    gameTime += 0.001; // Kecepatan putaran hari
-    // Hitung siklus matahari menggunakan gelombang (1 = Siang terik, -1 = Malam gelap)
+    gameTime += 0.001; 
     const sunIntensity = Math.sin(gameTime); 
-    
-    // Perubahan warna langit dari biru ke gelap
     const lightness = Math.max(0.05, (sunIntensity + 1) / 2 * 0.6 + 0.1); 
     const skyColor = new THREE.Color().setHSL(0.55, 0.5, lightness);
     
-    scene.background = skyColor;
-    scene.fog.color = skyColor;
+    scene.background = skyColor; scene.fog.color = skyColor;
     dirLight.intensity = Math.max(0, sunIntensity * 0.8);
     ambientLight.intensity = Math.max(0.1, sunIntensity * 0.4 + 0.1);
 
-    // Nyalakan senter otomatis jika malam tiba (sunIntensity < 0)
     const isNight = sunIntensity < 0.2;
     player.userData.flashlight.intensity = isNight ? 1 : 0;
     for(let id in otherPlayers) {
@@ -356,18 +364,16 @@ function animate() {
     requestAnimationFrame(animate);
     
     handleMovement();
-    updateEnvironment(); // Jalankan waktu
+    updateEnvironment(); 
     
     animateLimbs(player, wasMoving);
-    updateNametag(player, playerName + " (Kamu)", playerId); // Update nametag diri sendiri
+    updateNametag(player, playerName + " (Kamu)", playerId, true); 
     
     for(let id in otherPlayers) {
         animateLimbs(otherPlayers[id], otherPlayers[id].userData.isMoving);
-        updateNametag(otherPlayers[id], otherPlayers[id].userData.name, id); // Update nametag teman
+        updateNametag(otherPlayers[id], otherPlayers[id].userData.name, id, false); 
     }
     
-    // Kamera fokus ke kucing
-    camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
     renderer.render(scene, camera);
 }
 animate();
