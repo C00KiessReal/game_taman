@@ -125,32 +125,54 @@ function createHumanModel(shirtColorHex) {
 let player; 
 const otherPlayers = {};
 
-// 4. SISTEM LOGIN & SAVE DATA
+// 4. SISTEM LOGIN & SAVE DATA (Diperbarui)
 const playBtn = document.getElementById('play-btn');
+const userInput = document.getElementById('username-input');
+
+if (userInput) {
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') playBtn.click(); // Bisa tekan Enter untuk Login
+    });
+}
+
 if(playBtn) {
     playBtn.addEventListener('click', () => {
-        const inputName = document.getElementById('username-input').value.trim();
-        if (!inputName) { alert("Tolong ketik Username kamu dulu!"); return; }
+        const inputName = userInput.value.trim();
         
+        if (!inputName) { 
+            playBtn.innerText = "Ketik Nama Dulu!";
+            setTimeout(() => { playBtn.innerText = "Main Sekarang!"; }, 2000);
+            return; 
+        }
+        
+        playBtn.innerText = "Memuat Game..."; // Ubah teks agar player tahu sedang loading
         playerName = inputName;
-        playerId = "user_" + playerName.replace(/[.#$[\]]/g, ""); 
+        // Bersihkan nama dari simbol yang diblokir Firebase
+        playerId = "user_" + playerName.replace(/[\.\#\$\[\]\/]/g, ""); 
 
-        usersRef.child(playerId).once('value', (snapshot) => {
+        // Cek Firebase dengan sistem Anti-Macet (.then)
+        usersRef.child(playerId).once('value').then((snapshot) => {
             if (snapshot.exists()) {
-                myColor = snapshot.val().color;
-                alert("Selamat datang kembali, " + playerName + "!");
+                myColor = snapshot.val().color; // Ambil baju lama
             } else {
-                myColor = document.getElementById('color-input').value;
+                myColor = document.getElementById('color-input').value; // Baju baru
                 usersRef.child(playerId).set({ color: myColor, created: Date.now() });
-                alert("Karakter berhasil dibuat!");
             }
-            
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('game-ui').style.display = 'block';
-            
-            startGame(); 
+            masukKeTaman();
+        }).catch((err) => {
+            console.error("Error Firebase:", err);
+            // JIKA ERROR (Lag), TETAP PAKSA MASUK KE GAME (Anti-Softlock)
+            myColor = document.getElementById('color-input').value;
+            masukKeTaman();
         });
     });
+}
+
+// Fungsi transisi ke taman
+function masukKeTaman() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    startGame();
 }
 
 let cameraMode = 'TPP';
@@ -257,166 +279,4 @@ if(gameContainer) {
         for (let i = 0; i < e.changedTouches.length; i++) {
             if (e.changedTouches[i].target === renderer.domElement) {
                 isDraggingCamera = true; dragTouchId = e.changedTouches[i].identifier;
-                previousMouseX = e.changedTouches[i].clientX; previousMouseY = e.changedTouches[i].clientY;
-                break;
-            }
-        }
-    });
-    window.addEventListener('touchend', (e) => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === dragTouchId) { isDraggingCamera = false; dragTouchId = null; }
-        }
-    });
-    window.addEventListener('touchmove', (e) => {
-        if (!isDraggingCamera || !isGameStarted) return;
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === dragTouchId) {
-                lookAngle -= (e.changedTouches[i].clientX - previousMouseX) * 0.005;
-                lookPitch += (e.changedTouches[i].clientY - previousMouseY) * 0.005;
-                lookPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, lookPitch));
-                previousMouseX = e.changedTouches[i].clientX; previousMouseY = e.changedTouches[i].clientY;
-            }
-        }
-    });
-}
-
-const keys = {};
-window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
-
-const speed = 0.15; let wasMoving = false;
-let joystickAngle = 0; let joystickForce = 0; let isJoystickActive = false;
-let velocityY = 0; const gravity = -0.015; const jumpStrength = 0.3; const floorHeight = 0; let isGrounded = true;
-
-function triggerJump() { if (isGrounded && isGameStarted) { velocityY = jumpStrength; isGrounded = false; } }
-window.addEventListener('keydown', (e) => { if(e.key === ' ') triggerJump(); });
-const jumpBtn = document.getElementById('jump-btn');
-if(jumpBtn) {
-    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
-    jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); triggerJump(); });
-}
-
-function handleMovement() {
-    if (!isGameStarted) return;
-    
-    let localDx = 0; let localDz = 0;
-    if (keys['w'] || keys['arrowup']) localDz -= 1; if (keys['s'] || keys['arrowdown']) localDz += 1;
-    if (keys['a'] || keys['arrowleft']) localDx -= 1; if (keys['d'] || keys['arrowright']) localDx += 1;
-    
-    let isMoving = false; let worldAngle = 0; let dx = 0; let dz = 0;
-    if (isJoystickActive) {
-        worldAngle = lookAngle + (joystickAngle - Math.PI / 2);
-        dx = -Math.sin(worldAngle) * joystickForce; dz = -Math.cos(worldAngle) * joystickForce;
-        isMoving = true;
-    } else if (localDx !== 0 || localDz !== 0) {
-        worldAngle = lookAngle + Math.atan2(-localDx, -localDz);
-        dx = -Math.sin(worldAngle); dz = -Math.cos(worldAngle);
-        isMoving = true;
-    }
-
-    if (isMoving) {
-        player.position.x += dx * speed; player.position.z += dz * speed;
-        if (cameraMode === 'TPP') player.rotation.y = worldAngle;
-        wasMoving = true;
-    } else { wasMoving = false; }
-
-    if (cameraMode === 'FPP') player.rotation.y = lookAngle;
-
-    if (!isGrounded || player.position.y > floorHeight) {
-        velocityY += gravity; player.position.y += velocityY;
-        const distToTramp = Math.hypot(player.position.x - trampoline.position.x, player.position.z - trampoline.position.z);
-        if (distToTramp < 3 && player.position.y <= 0.75 && velocityY < 0) {
-            velocityY = 0.55; isGrounded = false;
-        } else if (player.position.y <= floorHeight) {
-            player.position.y = floorHeight; velocityY = 0; isGrounded = true;
-        }
-    }
-
-    if (cameraMode === 'TPP') {
-        const radius = 10;
-        camera.position.x = player.position.x + Math.sin(lookAngle) * Math.cos(lookPitch) * radius;
-        camera.position.y = player.position.y + 1.5 + Math.sin(lookPitch) * radius;
-        camera.position.z = player.position.z + Math.cos(lookAngle) * Math.cos(lookPitch) * radius;
-        camera.position.y = Math.max(0.5, camera.position.y);
-        camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
-    } else {
-        camera.position.x = player.position.x; camera.position.y = player.position.y + 1.7; camera.position.z = player.position.z;
-        camera.lookAt(player.position.x - Math.sin(lookAngle) * Math.cos(lookPitch) * 5, camera.position.y - Math.sin(lookPitch) * 5, player.position.z - Math.cos(lookAngle) * Math.cos(lookPitch) * 5);
-    }
-
-    playersRef.child(playerId).set({
-        name: playerName, x: player.position.x, y: player.position.y, z: player.position.z,
-        rY: player.rotation.y, isMoving: wasMoving, color: myColor 
-    });
-}
-
-function animateLimbs(model, isMoving) {
-    if (!model || !model.userData) return;
-    if (isMoving) {
-        const time = Date.now() * 0.015; 
-        model.userData.leftLeg.rotation.x = Math.sin(time) * 0.8;
-        model.userData.rightLeg.rotation.x = Math.sin(time + Math.PI) * 0.8;
-        model.userData.leftArm.rotation.x = Math.sin(time + Math.PI) * 0.8;
-        model.userData.rightArm.rotation.x = Math.sin(time) * 0.8;
-    } else {
-        model.userData.leftLeg.rotation.x = 0; model.userData.rightLeg.rotation.x = 0;
-        model.userData.leftArm.rotation.x = 0; model.userData.rightArm.rotation.x = 0;
-    }
-}
-
-// 6. SIKLUS WAKTU & RENDER LOOP 
-let gameTime = 0;
-function animate() {
-    requestAnimationFrame(animate);
-    
-    gameTime += 0.001; 
-    const sunIntensity = Math.sin(gameTime); 
-    scene.background = new THREE.Color().setHSL(0.55, 0.5, Math.max(0.05, (sunIntensity + 1) / 2 * 0.6 + 0.1));
-    scene.fog.color = scene.background;
-    dirLight.intensity = Math.max(0, sunIntensity * 0.8); ambientLight.intensity = Math.max(0.1, sunIntensity * 0.4 + 0.1);
-
-    if (isGameStarted) {
-        handleMovement();
-        const isNight = sunIntensity < 0.2;
-        player.userData.flashlight.intensity = isNight ? 1 : 0;
-        animateLimbs(player, wasMoving);
-        updateNametag(player, playerName + " (Kamu)", playerId, true); 
-        
-        for(let id in otherPlayers) {
-            if(otherPlayers[id].userData.flashlight) otherPlayers[id].userData.flashlight.intensity = isNight ? 1 : 0;
-            animateLimbs(otherPlayers[id], otherPlayers[id].userData.isMoving);
-            updateNametag(otherPlayers[id], otherPlayers[id].userData.name, id, false); 
-        }
-    } else {
-        camera.position.set(Math.sin(Date.now() * 0.0005) * 25, 10, Math.cos(Date.now() * 0.0005) * 25);
-        camera.lookAt(0, 2, 0);
-    }
-    
-    renderer.render(scene, camera);
-}
-animate();
-
-// 7. SISTEM CHAT
-const chatInput = document.getElementById('chat-input');
-const chatBox = document.getElementById('chat-box');
-if(chatInput) {
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && chatInput.value !== "") {
-            chatRef.push({ name: playerName, message: chatInput.value });
-            chatInput.value = "";
-        }
-    });
-}
-chatRef.on('child_added', (snapshot) => {
-    if(!chatBox) return;
-    const chat = snapshot.val();
-    const msgEl = document.createElement('div'); msgEl.style.marginBottom = "5px";
-    msgEl.innerHTML = `<strong style="color: #333;">${chat.name}:</strong> ${chat.message}`;
-    chatBox.appendChild(msgEl); chatBox.scrollTop = chatBox.scrollHeight;
-});
-
-window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-});
+                previousMouseX = e.changedTouches[i].clientX; previousMouseY = e.changedTouches[i].
