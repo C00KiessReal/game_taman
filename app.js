@@ -143,13 +143,10 @@ scene.add(player);
 
 // -- LOGIKA TOGGLE KAMERA TPP/FPP --
 let cameraMode = 'TPP';
-
 function toggleCameraMode() {
     cameraMode = (cameraMode === 'TPP') ? 'FPP' : 'TPP';
-    // Sembunyikan badan kucing saat mode FPP agar tidak menutupi kamera
     player.visible = (cameraMode === 'TPP');
 }
-
 window.addEventListener('keydown', (e) => { if(e.key.toLowerCase() === 'c') toggleCameraMode(); });
 document.getElementById('cam-btn').addEventListener('touchstart', (e) => { e.preventDefault(); toggleCameraMode(); });
 document.getElementById('cam-btn').addEventListener('mousedown', (e) => { e.preventDefault(); toggleCameraMode(); });
@@ -168,10 +165,8 @@ function updateNametag(mesh, nameText, id, isSelf = false) {
         nametagsContainer.appendChild(div);
     }
     
-    // Jangan tampilkan nametag milik sendiri jika sedang mode FPP
     if (isSelf && cameraMode === 'FPP') {
-        div.style.display = 'none';
-        return;
+        div.style.display = 'none'; return;
     }
 
     const vector = new THREE.Vector3();
@@ -223,14 +218,67 @@ playersRef.on('value', (snapshot) => {
     }
 });
 
-// 5. KONTROL GERAKAN
+// 5. SISTEM KAMERA & KONTROL (Drag Layar & WASD Relatif)
+let lookAngle = 0; // Sudut kamera
+let isDraggingCamera = false;
+let previousMouseX = 0;
+let dragTouchId = null;
+
+const gameContainer = document.getElementById('game-container');
+
+// Mouse Drag untuk PC
+gameContainer.addEventListener('mousedown', (e) => {
+    isDraggingCamera = true;
+    previousMouseX = e.clientX;
+});
+window.addEventListener('mouseup', () => { isDraggingCamera = false; });
+window.addEventListener('mousemove', (e) => {
+    if (isDraggingCamera) {
+        const deltaX = e.clientX - previousMouseX;
+        lookAngle -= deltaX * 0.005; 
+        previousMouseX = e.clientX;
+    }
+});
+
+// Touch Drag (Swipe) untuk HP (mendukung multi-touch dengan Joystick)
+gameContainer.addEventListener('touchstart', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        // Hanya deteksi jika yang disentuh adalah area 3D (bukan UI)
+        if (e.changedTouches[i].target === renderer.domElement) {
+            isDraggingCamera = true;
+            dragTouchId = e.changedTouches[i].identifier;
+            previousMouseX = e.changedTouches[i].clientX;
+            break;
+        }
+    }
+});
+window.addEventListener('touchend', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === dragTouchId) {
+            isDraggingCamera = false;
+            dragTouchId = null;
+        }
+    }
+});
+window.addEventListener('touchmove', (e) => {
+    if (!isDraggingCamera) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === dragTouchId) {
+            const deltaX = e.changedTouches[i].clientX - previousMouseX;
+            lookAngle -= deltaX * 0.005;
+            previousMouseX = e.changedTouches[i].clientX;
+        }
+    }
+});
+
+// Kontrol Gerak
 const keys = {};
 window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
 const speed = 0.15; 
 let wasMoving = false;
-let joystickDx = 0; let joystickDz = 0; let isJoystickActive = false;
+let joystickAngle = 0; let joystickForce = 0; let isJoystickActive = false;
 
 let velocityY = 0;
 const gravity = -0.015;
@@ -249,29 +297,58 @@ const joystickZone = document.getElementById('joystick-zone');
 const manager = nipplejs.create({ zone: joystickZone, mode: 'static', position: { left: '50%', top: '50%' }, color: 'white', size: 100 });
 manager.on('move', (evt, data) => {
     isJoystickActive = true;
-    const force = Math.min(data.force, 1);
-    joystickDx = Math.cos(data.angle.radian) * force; joystickDz = -Math.sin(data.angle.radian) * force;
+    joystickForce = Math.min(data.force, 1);
+    joystickAngle = data.angle.radian;
 });
-manager.on('end', () => { isJoystickActive = false; joystickDx = 0; joystickDz = 0; });
+manager.on('end', () => { isJoystickActive = false; joystickForce = 0; });
 
 function handleMovement() {
-    let dx = 0; let dz = 0;
-    if (keys['w'] || keys['arrowup']) dz -= 1; if (keys['s'] || keys['arrowdown']) dz += 1;
-    if (keys['a'] || keys['arrowleft']) dx -= 1; if (keys['d'] || keys['arrowright']) dx += 1;
+    let localDx = 0; let localDz = 0;
     
-    if (isJoystickActive) { dx = joystickDx; dz = joystickDz; }
-    if (dx !== 0 || dz !== 0) {
-        if (!isJoystickActive) {
-            const length = Math.sqrt(dx * dx + dz * dz);
-            dx = (dx / length); dz = (dz / length);
+    if (keys['w'] || keys['arrowup']) localDz -= 1; 
+    if (keys['s'] || keys['arrowdown']) localDz += 1;
+    if (keys['a'] || keys['arrowleft']) localDx -= 1; 
+    if (keys['d'] || keys['arrowright']) localDx += 1;
+    
+    let isMoving = false;
+    let worldAngle = 0;
+    let dx = 0; let dz = 0;
+
+    // Kalkulasi arah gerak menyesuaikan arah hadap kamera (lookAngle)
+    if (isJoystickActive) {
+        const localAng = joystickAngle - Math.PI / 2;
+        worldAngle = lookAngle + localAng;
+        dx = -Math.sin(worldAngle) * joystickForce;
+        dz = -Math.cos(worldAngle) * joystickForce;
+        isMoving = true;
+    } 
+    else if (localDx !== 0 || localDz !== 0) {
+        const localAng = Math.atan2(-localDx, -localDz);
+        worldAngle = lookAngle + localAng;
+        dx = -Math.sin(worldAngle);
+        dz = -Math.cos(worldAngle);
+        isMoving = true;
+    }
+
+    if (isMoving) {
+        player.position.x += dx * speed;
+        player.position.z += dz * speed;
+        
+        // Di mode TPP, kucing menghadap ke arah dia melangkah
+        if (cameraMode === 'TPP') {
+            player.rotation.y = worldAngle;
         }
-        player.position.x += dx * speed; player.position.z += dz * speed;
-        player.rotation.y = Math.atan2(dx, dz);
         wasMoving = true;
     } else {
         wasMoving = false;
     }
 
+    // Di mode FPP, kucing selalu berputar mengikuti kamera (agar senternya ikut menyinari arah pandangan)
+    if (cameraMode === 'FPP') {
+        player.rotation.y = lookAngle;
+    }
+
+    // Fisika Gravitasi & Trampolin
     if (!isGrounded || player.position.y > floorHeight) {
         velocityY += gravity;
         player.position.y += velocityY;
@@ -285,21 +362,21 @@ function handleMovement() {
         }
     }
 
-    // UPDATE LOGIKA POSISI KAMERA TPP/FPP
+    // UPDATE POSISI KAMERA DINAMIS
     if (cameraMode === 'TPP') {
-        camera.position.x = player.position.x;
-        camera.position.z = player.position.z + 10;
+        // Kamera berputar mengelilingi belakang kucing
+        camera.position.x = player.position.x + Math.sin(lookAngle) * 10;
+        camera.position.z = player.position.z + Math.cos(lookAngle) * 10;
         camera.position.y = player.position.y + 5;
         camera.lookAt(player.position.x, player.position.y + 1, player.position.z);
     } else {
-        // Mode FPP: Posisikan kamera tepat di tinggi kepala kucing
+        // Mode FPP: Posisikan kamera di mata kucing
         camera.position.x = player.position.x;
         camera.position.y = player.position.y + 1.6; 
         camera.position.z = player.position.z;
         
-        // Buat kamera menghadap persis ke arah badan kucing diputar
-        const targetX = player.position.x + Math.sin(player.rotation.y) * 5;
-        const targetZ = player.position.z + Math.cos(player.rotation.y) * 5;
+        const targetX = player.position.x - Math.sin(lookAngle) * 5;
+        const targetZ = player.position.z - Math.cos(lookAngle) * 5;
         camera.lookAt(targetX, player.position.y + 1.6, targetZ);
     }
 
