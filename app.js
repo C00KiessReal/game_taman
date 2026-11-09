@@ -68,11 +68,11 @@ function createAvatarModel(gender) {
 
     // Pewarnaan Hardcode sesuai Referensi Gambar
     const skinMat = new THREE.MeshLambertMaterial({ color: 0xffe0bd }); 
-    const hairMat = new THREE.MeshLambertMaterial({ color: isMale ? 0xe6e6fa : 0x2b2b2b }); // Putih vs Hitam
-    const shirtMat = new THREE.MeshLambertMaterial({ color: isMale ? 0xcbd0eb : 0xffffff }); // Baju Ungu Muda vs Putih
-    const pantsMat = new THREE.MeshLambertMaterial({ color: isMale ? 0x5c4f74 : 0x2b427a }); // Celana Ungu Tua vs Rok Biru
-    const shoeMat = new THREE.MeshLambertMaterial({ color: isMale ? 0x5c4f74 : 0x222222 }); // Sepatu Boots Ungu vs Sepatu Hitam
-    const bagMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a }); // Tas Merah Bata
+    const hairMat = new THREE.MeshLambertMaterial({ color: isMale ? 0xe6e6fa : 0x2b2b2b }); 
+    const shirtMat = new THREE.MeshLambertMaterial({ color: isMale ? 0xcbd0eb : 0xffffff }); 
+    const pantsMat = new THREE.MeshLambertMaterial({ color: isMale ? 0x5c4f74 : 0x2b427a }); 
+    const shoeMat = new THREE.MeshLambertMaterial({ color: isMale ? 0x5c4f74 : 0x222222 }); 
+    const bagMat = new THREE.MeshLambertMaterial({ color: 0x8b3a3a }); 
     const whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
     const blackMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const redMat = new THREE.MeshLambertMaterial({ color: 0xcc1111 });
@@ -91,7 +91,6 @@ function createAvatarModel(gender) {
 
     // RAMBUT & AKSESORIS
     if (isMale) {
-        // Rambut Spiky (Duri)
         const hairBase = new THREE.Mesh(new THREE.SphereGeometry(0.37, 16, 16), hairMat); hairBase.position.y = 0.05; headGroup.add(hairBase);
         for(let i=0; i<15; i++) {
             const spike = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 4), hairMat);
@@ -99,7 +98,6 @@ function createAvatarModel(gender) {
             spike.lookAt(0, 0, 0); spike.rotation.x -= Math.PI; headGroup.add(spike);
         }
     } else {
-        // Rambut Bob & Pita Merah
         const hairBase = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 32, 0, Math.PI*2, 0, Math.PI/1.5), hairMat);
         hairBase.position.y = 0.05; headGroup.add(hairBase);
         
@@ -114,7 +112,6 @@ function createAvatarModel(gender) {
     const torso = new THREE.Mesh(torsoGeo, shirtMat); torso.position.y = 1.05; torso.castShadow = true; group.add(torso);
 
     if (!isMale) { 
-        // Tambahan Rok Cewek & Kerah Pelaut
         const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.35, 0.25, 16), pantsMat); skirt.position.y = 0.75; skirt.castShadow = true; group.add(skirt);
         const tie = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.2, 4), redMat); tie.position.set(0, 1.2, -0.15); tie.rotation.x = Math.PI; group.add(tie);
     }
@@ -161,23 +158,48 @@ function createAvatarModel(gender) {
 
 let player; const otherPlayers = {};
 
-// 4. SISTEM LOGIN
-document.getElementById('play-btn')?.addEventListener('click', () => {
-    const inputName = document.getElementById('username-input').value.trim();
-    if (!inputName) return alert("Ketik Username dulu!");
-    
-    playerName = inputName;
-    playerId = "user_" + playerName.replace(/[\.\#\$\[\]\/]/g, ""); 
-    playerGender = document.getElementById('gender-select').value;
-    
-    document.getElementById('play-btn').innerText = "Memuat...";
+// 4. SISTEM LOGIN (ANTI-MACET 100%)
+const playBtn = document.getElementById('play-btn');
+const userInput = document.getElementById('username-input');
 
-    usersRef.child(playerId).once('value').then(snap => {
-        if(snap.exists()) playerGender = snap.val().gender; // Pakai gender lama kalau sudah punya akun
-        else usersRef.child(playerId).set({ gender: playerGender });
-        masukGame();
-    }).catch(() => masukGame());
-});
+// Bisa Tekan Enter di Keyboard untuk Login
+if (userInput) {
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') playBtn.click();
+    });
+}
+
+if (playBtn) {
+    playBtn.addEventListener('click', () => {
+        const inputName = userInput.value.trim();
+        
+        // Peringatan jika nama kosong (Tanpa Alert)
+        if (!inputName) { 
+            playBtn.innerText = "Ketik Nama Dulu!";
+            setTimeout(() => { playBtn.innerText = "Main Sekarang 🚀"; }, 2000);
+            return; 
+        }
+        
+        playBtn.innerText = "Memuat Game..."; 
+        playerName = inputName;
+        // Bersihkan simbol yang bikin error Firebase
+        playerId = "user_" + playerName.replace(/[\.\#\$\[\]\/]/g, ""); 
+        playerGender = document.getElementById('gender-select').value;
+        
+        // Cek Database dengan Proteksi Anti-Lag (.catch)
+        usersRef.child(playerId).once('value').then(snap => {
+            if(snap.exists()) {
+                playerGender = snap.val().gender || playerGender; // Pakai gender lama
+            } else {
+                usersRef.child(playerId).set({ gender: playerGender });
+            }
+            masukGame();
+        }).catch((err) => {
+            console.error("Firebase Delay, Paksa Masuk!");
+            masukGame(); // Tetap masuk meskipun internet lag
+        });
+    });
+}
 
 let manager;
 function masukGame() {
