@@ -15,23 +15,64 @@
     <div id="game-container"></div>
     <div id="nametags-container"></div>
     
-    <!-- LAYAR LOGIN / BUAT KARAKTER -->
+    <!-- LAYAR KUSTOMISASI KARAKTER (AVATAR SHOP / CREATOR) -->
     <div id="login-screen">
         <div class="login-box">
-            <h2>Masuk ke Taman</h2>
-            <p>Buat karakter atau gunakan nama lamamu</p>
+            <h2>Kustomisasi Karakter</h2>
+            <p>Buat identitas unikmu di taman!</p>
+            
             <input type="text" id="username-input" placeholder="Ketik Username..." maxlength="15">
             
-            <div class="color-picker-zone">
-                <label>Pilih Warna Baju:</label>
-                <input type="color" id="color-input" value="#ff3366">
+            <!-- Pilihan Gender -->
+            <div class="custom-group">
+                <label>Gender:</label>
+                <select id="gender-select">
+                    <option value="male">Laki-laki 👦</option>
+                    <option value="female">Perempuan 👧</option>
+                </select>
+            </div>
+
+            <!-- Pilihan Wajah / Kulit -->
+            <div class="custom-group">
+                <label>Warna Kulit:</label>
+                <input type="color" id="skin-input" value="#ffcc99">
+            </div>
+
+            <!-- Pilihan Rambut -->
+            <div class="custom-group">
+                <label>Warna Rambut:</label>
+                <input type="color" id="hair-color-input" value="#3d2314">
+            </div>
+
+            <!-- Bentuk Badan / Proporsi -->
+            <div class="custom-group">
+                <label>Bentuk Badan (Tinggi/Gempal):</label>
+                <input type="range" id="body-scale-input" min="0.8" max="1.3" step="0.05" value="1">
+            </div>
+
+            <!-- Pilihan Baju -->
+            <div class="custom-group">
+                <label>Baju (Shirt):</label>
+                <input type="color" id="shirt-input" value="#33aaff">
+            </div>
+
+            <!-- Pilihan Celana -->
+            <div class="custom-group">
+                <label>Celana (Pants):</label>
+                <input type="color" id="pants-input" value="#1a237e">
+            </div>
+
+            <!-- Pilihan Sepatu -->
+            <div class="custom-group">
+                <label>Sepatu (Shoes):</label>
+                <input type="color" id="shoes-input" value="#222222">
             </div>
             
-            <button id="play-btn">Main Sekarang!</button>
+            <button id="play-btn">Masuk ke Taman 🚀</button>
         </div>
     </div>
 
-    <!-- UI Game (Sembunyi sebelum login) -->
+    <!-- UI DALAM GAME -->
     <div id="game-ui" style="display: none;">
         <div id="ui-container">
             <div id="chat-box"></div>
