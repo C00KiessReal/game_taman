@@ -6,7 +6,11 @@
     <title>Taman Bermain Roleplay</title>
     <link rel="stylesheet" href="style.css">
     
+    <!-- Tiga Script Wajib Three.js & GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- Script Firebase & NippleJS -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
@@ -19,15 +23,16 @@
     <div id="login-screen">
         <div class="login-box">
             <h2>Masuk ke Taman</h2>
-            <p>Pilih karakter animemu!</p>
+            <p>Pilih karaktermu!</p>
             
             <input type="text" id="username-input" placeholder="Ketik Username..." maxlength="15">
             
             <div class="custom-group">
                 <label>Karakter:</label>
                 <select id="gender-select">
-                    <option value="male">Cowok (Gaya Killua)</option>
-                    <option value="female">Cewek (Gaya Sailor)</option>
+                    <!-- Namanya bisa disesuaikan kalau modelnya cowok semua -->
+                    <option value="male">Karakter Male A</option>
+                    <option value="female">Karakter Default</option>
                 </select>
             </div>
             
