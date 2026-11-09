@@ -190,4 +190,174 @@ function masukGame() {
     const joystickZone = document.getElementById('joystick-zone');
     if(joystickZone && typeof nipplejs !== 'undefined') {
         manager = nipplejs.create({ zone: joystickZone, mode: 'static', position: { left: '50%', top: '50%' }, color: 'white', size: 100 });
-        manager.on('move', (evt, data) => { isJoystickActive = true; joystickForce = Math.min(data.force,
+        manager.on('move', (evt, data) => { isJoystickActive = true; joystickForce = Math.min(data.force, 1); joystickAngle = data.angle.radian; });
+        manager.on('end', () => { isJoystickActive = false; joystickForce = 0; });
+    }
+}
+
+// 5. KAMERA & KONTROL LENGKAP
+let cameraMode = 'TPP';
+function toggleCam() { if(isGameStarted) { cameraMode = cameraMode === 'TPP' ? 'FPP' : 'TPP'; player.visible = cameraMode === 'TPP'; } }
+window.addEventListener('keydown', e => { if(e.key.toLowerCase()==='c') toggleCam(); });
+document.getElementById('cam-btn')?.addEventListener('click', toggleCam);
+
+function updateNametag(mesh, nameText, id, isSelf = false) {
+    const container = document.getElementById('nametags-container'); if(!container) return;
+    let div = document.getElementById('tag_' + id);
+    if (!div) { div = document.createElement('div'); div.id = 'tag_' + id; div.className = 'nametag'; div.innerText = nameText; container.appendChild(div); }
+    if (isSelf && cameraMode === 'FPP') { div.style.display = 'none'; return; }
+
+    const vector = new THREE.Vector3(); mesh.getWorldPosition(vector); vector.y += 2.5; vector.project(camera); 
+    if (vector.z < 1 && vector.z > -1) { div.style.display = 'block'; div.style.left = (vector.x * 0.5 + 0.5) * window.innerWidth + 'px'; div.style.top = (vector.y * -0.5 + 0.5) * window.innerHeight + 'px'; } else { div.style.display = 'none'; }
+}
+
+playersRef.on('value', snap => {
+    if(!isGameStarted) return;
+    const data = snap.val();
+    for (let id in data) {
+        if (id === playerId || data[id].x === undefined) continue; 
+        if (!otherPlayers[id]) {
+            const mesh = createAvatarModel(data[id].gender || "male"); scene.add(mesh); otherPlayers[id] = mesh;
+        }
+        otherPlayers[id].position.set(data[id].x, data[id].y, data[id].z);
+        if(data[id].rY !== undefined) otherPlayers[id].rotation.y = data[id].rY;
+        otherPlayers[id].userData.isMoving = data[id].isMoving;
+        otherPlayers[id].userData.isJumping = data[id].isJumping; // Sync status lompat pemain lain
+        otherPlayers[id].userData.name = data[id].name;
+    }
+    for (let id in otherPlayers) {
+        if (!data || !data[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; const tag = document.getElementById('tag_' + id); if(tag) tag.remove(); }
+    }
+});
+
+let lookAngle = 0, lookPitch = 0.2, isDragging = false, prevX = 0, prevY = 0;
+const gc = document.getElementById('game-container');
+gc.addEventListener('mousedown', e => { isDragging = true; prevX = e.clientX; prevY = e.clientY; }); window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+    if(isDragging && isGameStarted) { lookAngle -= (e.clientX - prevX)*0.005; lookPitch += (e.clientY - prevY)*0.005; lookPitch = Math.max(-1.4, Math.min(1.4, lookPitch)); prevX = e.clientX; prevY = e.clientY; }
+});
+gc.addEventListener('touchstart', e => { if(e.touches[0].target === renderer.domElement){ isDragging=true; prevX=e.touches[0].clientX; prevY=e.touches[0].clientY; }}); window.addEventListener('touchend', () => isDragging=false);
+window.addEventListener('touchmove', e => {
+    if(isDragging && isGameStarted) { lookAngle -= (e.touches[0].clientX - prevX)*0.005; lookPitch += (e.touches[0].clientY - prevY)*0.005; lookPitch = Math.max(-1.4, Math.min(1.4, lookPitch)); prevX=e.touches[0].clientX; prevY=e.touches[0].clientY; }
+});
+
+const keys = {}; window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true); window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+const speed = 0.15; let wasMoving = false, joystickAngle = 0, joystickForce = 0, isJoystickActive = false, velocityY = 0, gravity = -0.015, jumpStrength = 0.3, floorHeight = 0, isGrounded = true;
+function triggerJump() { if (isGrounded && isGameStarted) { velocityY = jumpStrength; isGrounded = false; } }
+window.addEventListener('keydown', e => { if(e.key === ' ') triggerJump(); });
+document.getElementById('jump-btn')?.addEventListener('touchstart', e => { e.preventDefault(); triggerJump(); });
+document.getElementById('jump-btn')?.addEventListener('mousedown', e => { e.preventDefault(); triggerJump(); });
+
+function handleMovement() {
+    if(!isGameStarted) return;
+    let lDx=0, lDz=0;
+    if(keys['w']||keys['arrowup']) lDz-=1; if(keys['s']||keys['arrowdown']) lDz+=1; if(keys['a']||keys['arrowleft']) lDx-=1; if(keys['d']||keys['arrowright']) lDx+=1;
+    
+    let isMoving = false, worldAngle = 0, dx = 0, dz = 0;
+    if (isJoystickActive) { worldAngle = lookAngle + (joystickAngle - Math.PI / 2); dx = -Math.sin(worldAngle)*joystickForce; dz = -Math.cos(worldAngle)*joystickForce; isMoving = true; } 
+    else if (lDx!==0 || lDz!==0) { worldAngle = lookAngle + Math.atan2(-lDx, -lDz); dx = -Math.sin(worldAngle); dz = -Math.cos(worldAngle); isMoving = true; }
+
+    if (isMoving) { player.position.x += dx * speed; player.position.z += dz * speed; if (cameraMode === 'TPP') player.rotation.y = worldAngle; } 
+    if (cameraMode === 'FPP') player.rotation.y = lookAngle;
+
+    // GRAVITASI LOMPATAN
+    if (!isGrounded || player.position.y > floorHeight) {
+        velocityY += gravity; player.position.y += velocityY;
+        const distToTramp = Math.hypot(player.position.x - trampoline.position.x, player.position.z - trampoline.position.z);
+        if (distToTramp < 3 && player.position.y <= 0.75 && velocityY < 0) { velocityY = 0.55; isGrounded = false; } 
+        else if (player.position.y <= floorHeight) { player.position.y = floorHeight; velocityY = 0; isGrounded = true; }
+    }
+
+    if(cameraMode==='TPP') {
+        camera.position.set(player.position.x + Math.sin(lookAngle)*Math.cos(lookPitch)*10, Math.max(0.5, player.position.y + 1.5 + Math.sin(lookPitch)*10), player.position.z + Math.cos(lookAngle)*Math.cos(lookPitch)*10);
+        camera.lookAt(player.position.x, player.position.y+1.5, player.position.z);
+    } else {
+        camera.position.set(player.position.x, player.position.y+1.6, player.position.z);
+        camera.lookAt(player.position.x - Math.sin(lookAngle)*Math.cos(lookPitch)*5, camera.position.y - Math.sin(lookPitch)*5, player.position.z - Math.cos(lookAngle)*Math.cos(lookPitch)*5);
+    }
+    
+    // Update data ke Firebase (termasuk isJumping)
+    playersRef.child(playerId).set({ 
+        name: playerName, gender: playerGender, 
+        x: player.position.x, y: player.position.y, z: player.position.z, 
+        rY: player.rotation.y, 
+        isMoving: isMoving,
+        isJumping: !isGrounded
+    });
+    
+    wasMoving = isMoving;
+}
+
+// 6. SISTEM ANIMASI GLTF
+function updateAnimations(mesh, isMoving, isJumping, delta) {
+    if (!mesh || !mesh.userData.mixer) return;
+    
+    mesh.userData.mixer.update(delta);
+
+    const anims = mesh.userData.animations;
+    if (!anims) return;
+
+    let targetAnim = 'idle';
+    if (isJumping) {
+        targetAnim = 'jump';
+    } else if (isMoving) {
+        targetAnim = 'walk'; // Ganti jadi 'sprint' kalau ada tombol lari
+    }
+
+    const nextAction = anims[targetAnim];
+    const currentAction = mesh.userData.currentAction;
+
+    // Lakukan transisi silang (crossfade) agar perubahan gerak halus
+    if (nextAction && currentAction !== nextAction) {
+        nextAction.reset().fadeIn(0.2).play();
+        if (currentAction) currentAction.fadeOut(0.2);
+        mesh.userData.currentAction = nextAction;
+    }
+}
+
+// 7. GAME LOOP UTAMA
+const clock = new THREE.Clock();
+let gameTime = 0;
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    const delta = clock.getDelta();
+    gameTime += 0.001; 
+    
+    // Siklus Siang Malam
+    const sunIntensity = Math.sin(gameTime); 
+    scene.background = new THREE.Color().setHSL(0.55, 0.5, Math.max(0.05, (sunIntensity+1)/2*0.6+0.1)); scene.fog.color = scene.background;
+    dirLight.intensity = Math.max(0, sunIntensity*0.8); ambientLight.intensity = Math.max(0.1, sunIntensity*0.4+0.1);
+
+    if(isGameStarted) {
+        handleMovement(); 
+        const isNight = sunIntensity < 0.2; 
+        
+        // Update Animasi, Senter, & Nametag (Pemain Lokal)
+        if (player.userData.flashlight) player.userData.flashlight.intensity = isNight ? 1 : 0;
+        updateAnimations(player, wasMoving, !isGrounded, delta); 
+        updateNametag(player, playerName + " (Kamu)", playerId, true); 
+        
+        // Update Animasi, Senter, & Nametag (Pemain Lain via Firebase)
+        for(let id in otherPlayers) { 
+            const p = otherPlayers[id];
+            if(p.userData.flashlight) p.userData.flashlight.intensity = isNight ? 1 : 0; 
+            updateAnimations(p, p.userData.isMoving, p.userData.isJumping, delta); 
+            updateNametag(p, p.userData.name, id, false); 
+        }
+    } else { 
+        // Kamera muter saat di layar login
+        camera.position.set(Math.sin(Date.now()*0.0005)*20, 10, Math.cos(Date.now()*0.0005)*20); camera.lookAt(0,2,0); 
+    }
+    
+    renderer.render(scene, camera);
+}
+animate();
+
+// 8. CHAT SYSTEM & RESIZE
+const ci = document.getElementById('chat-input'), cb = document.getElementById('chat-box');
+ci?.addEventListener('keypress', e => { if(e.key==='Enter'&&ci.value){ chatRef.push({name:playerName, message:ci.value}); ci.value=""; }});
+chatRef.on('child_added', s => { if(cb){ cb.innerHTML += `<div><strong style="color: #333;">${s.val().name}:</strong> ${s.val().message}</div>`; cb.scrollTop = cb.scrollHeight; }});
+window.addEventListener('resize', () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
