@@ -9,7 +9,7 @@ body, html {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%; z-index: 1; pointer-events: none;
 }
-#game-container { pointer-events: auto; } /* Layar bisa disentuh */
+#game-container { pointer-events: auto; }
 
 /* DESAIN LAYAR LOGIN */
 #login-screen {
